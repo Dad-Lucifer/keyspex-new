@@ -5,6 +5,8 @@ import { site, ServiceItem } from "@/content/site";
 import { Nav } from "@/components/hero/Nav";
 import { Footer } from "@/components/sections/Footer";
 
+export const instant = false;
+
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
