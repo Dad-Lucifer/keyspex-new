@@ -1,0 +1,102 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  --paper: #f5f2ed;
+  --bg-primary: #f5f2ed;
+  --bg-elevated: #e0dbd3;
+  --bg-surface: #ebe7e0;
+  --bg-contrast: #1a1a1f;
+  --ink: #1a1a1f;
+  --text-primary: #1a1a1f;
+  --text-secondary: #5a5a65;
+  --text-inverse: #f5f2ed;
+  --border-light: #e0dbd3;
+  --line: #e0dbd3;
+  --brand: #0A5CF0;
+  --brand-bright: #0068FE;
+  --brand-ink: #0842B0;
+  --tint: #ebe7e0;
+  --muted: #5a5a65;
+  --radius: 0px;
+  --background: var(--bg-primary);
+  --foreground: var(--text-primary);
+  --primary: var(--brand);
+  --primary-foreground: #fff;
+  --muted-foreground: var(--text-secondary);
+  --border: var(--border-light);
+  --ring: var(--brand);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-contrast: var(--bg-contrast);
+  --color-ink: var(--ink);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-inverse: var(--text-inverse);
+  --color-border-light: var(--border-light);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-bright: var(--brand-bright);
+  --color-brand-ink: var(--brand-ink);
+  --color-tint: var(--tint);
+  --color-muted: var(--muted);
+  --font-headline: var(--font-headline);
+  --font-display: var(--font-headline);
+  --font-sans: var(--font-body);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-primary);
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--brand);
+  color: #ffffff;
+}
+
+/* Ticker marquee - identical to marktechstudios.com */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 35s linear infinite;
+}
+
+.marquee-track {
+  animation: marquee 35s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee,
+  .marquee-track {
+    animation: none;
+  }
+}
+
+/* Pulse glow for status badge */
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.6); opacity: 0.3; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
