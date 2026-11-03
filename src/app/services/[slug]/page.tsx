@@ -203,7 +203,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
                 Consultations are completely free. We scope features, deliverables and cost based precisely on your operational reality.
               </p>
               <Link
-                href="/#contact"
+                href={`/?service=${service.slug}#contact`}
                 className="flex h-12 w-full items-center justify-center rounded-[var(--radius)] text-sm font-semibold text-white transition-all hover:opacity-95"
                 style={{ background: "var(--brand)" }}
               >

@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { site } from "@/content/site";
 
@@ -12,6 +12,41 @@ export function ContactSection() {
     service: "",
     message: ""
   });
+
+  useEffect(() => {
+    // 1. Auto-select service if ?service=... is present in URL
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const serviceQuery = params.get("service");
+      if (serviceQuery) {
+        const matched = site.services.find(
+          (s) =>
+            s.slug === serviceQuery ||
+            s.title.toLowerCase() === serviceQuery.toLowerCase()
+        );
+        if (matched) {
+          setForm((prev) => ({ ...prev, service: matched.title }));
+        }
+      }
+    }
+
+    // 2. Reliable scroll to contact / talk to us section
+    const scrollToTarget = () => {
+      const hash = window.location.hash;
+      if (hash === "#contact" || hash === "#talk-to-us") {
+        const target = document.getElementById("contact");
+        if (target) {
+          setTimeout(() => {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 80);
+        }
+      }
+    };
+
+    scrollToTarget();
+    window.addEventListener("hashchange", scrollToTarget);
+    return () => window.removeEventListener("hashchange", scrollToTarget);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,7 +61,11 @@ export function ContactSection() {
   };
 
   return (
-    <section id="contact" className="py-24 md:py-36 bg-[#ebe7e0]/60 border-t border-[#e0dbd3]">
+    <section
+      id="contact"
+      className="scroll-mt-20 py-24 md:py-36 bg-[#ebe7e0]/60 border-t border-[#e0dbd3] relative"
+    >
+      <div id="talk-to-us" className="-translate-y-24 scroll-mt-24 pointer-events-none" aria-hidden="true" />
       <div className="mx-auto max-w-[1280px] px-6 lg:px-10">
         <div className="grid gap-16 lg:grid-cols-[1fr_1.4fr] lg:items-start">
           <Reveal>
@@ -35,7 +74,7 @@ export function ContactSection() {
                 className="mb-4 font-mono text-xs uppercase tracking-[0.18em] text-[#5a5a65]"
                 style={{ fontFamily: "var(--font-mono)" }}
               >
-                07 · Start a Project
+                07 · Talk to Us · Start a Project
               </p>
               <h2
                 className="mb-6 font-headline font-bold tracking-tight leading-[0.98] text-[#1a1a1f]"
