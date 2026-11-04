@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 46, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/rosha/Desktop/project/keyspex-new/src/components/motion/Provider.tsx"],"sourcesContent":["\"use client\";\nimport { MotionConfig } from \"motion/react\";\nexport function MotionProvider({ children }: { children: React.ReactNode }) {\n  return <MotionConfig reducedMotion=\"user\">{children}</MotionConfig>;\n}\n"],"names":["MotionProvider","children","reducedMotion"],"mappings":";;;;;AACA;AADA;;;AAEO,SAASA,eAAe,EAAEC,QAAQ,EAAiC;IACxE,qBAAO,8OAAC,sMAAY;QAACC,eAAc;kBAAQD;;;;;;AAC7C"}}]
+}
