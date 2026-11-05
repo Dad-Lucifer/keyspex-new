@@ -8,6 +8,11 @@ import { apiRateLimiter } from "./middleware/rateLimiter";
 import { errorHandler } from "./middleware/errorHandler";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
+import dashboardRoutes from "./routes/dashboard.routes";
+import projectRoutes from "./routes/project.routes";
+import obligationRoutes from "./routes/obligation.routes";
+import eventRoutes from "./routes/event.routes";
+import auditRoutes from "./routes/audit.routes";
 
 // Initialize Firebase (side effect import)
 import "./config/firebase";
@@ -55,6 +60,11 @@ app.use("/api", apiRateLimiter);
 // ── Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/obligations", obligationRoutes);
+app.use("/api/events", eventRoutes);
+app.use("/api/audit-log", auditRoutes);
 
 // ── Health check
 app.get("/health", (_req, res) => {

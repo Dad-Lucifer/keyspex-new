@@ -1,17 +1,17 @@
 "use client";
-import { useState, useId } from "react";
+import { useState, useId, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 
 // ─── Validation schema (mirrors backend) ─────────────────────────────────────
 const loginSchema = z.object({
   email: z
-    .string({ required_error: "Email is required." })
+    .string({ error: "Email is required." })
     .email("Enter a valid email address.")
     .toLowerCase()
     .trim(),
   password: z
-    .string({ required_error: "Password is required." })
+    .string({ error: "Password is required." })
     .min(8, "Password must be at least 8 characters."),
 });
 
@@ -49,6 +49,19 @@ export function LoginForm() {
   const [status, setStatus] = useState<Status>("idle");
   const [showPassword, setShowPassword] = useState(false);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("error");
+    if (err === "auth_required") {
+      setGlobalError("Please sign in with your administrator account to access the dashboard.");
+    } else if (err === "admin_only" || err === "unauthorized_role") {
+      setGlobalError("Access restricted: Administrator privileges required.");
+    } else if (err === "session_expired") {
+      setGlobalError("Your session has expired. Please sign in again.");
+    }
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
@@ -67,7 +80,7 @@ export function LoginForm() {
     const result = loginSchema.safeParse(form);
     if (!result.success) {
       const errors: FieldErrors = {};
-      result.error.errors.forEach((err) => {
+      result.error.issues.forEach((err) => {
         const field = err.path[0] as keyof FormState;
         if (!errors[field]) errors[field] = err.message;
       });
@@ -100,6 +113,10 @@ export function LoginForm() {
       const { accessToken, user } = json.data;
       sessionStorage.setItem("ks_access_token", accessToken);
       sessionStorage.setItem("ks_user", JSON.stringify(user));
+
+      // Set cookies for Next.js middleware and route protection (15m expiration, same as access token)
+      document.cookie = `ks_token=${accessToken}; path=/; max-age=900; SameSite=Lax`;
+      document.cookie = `ks_role=${user.role}; path=/; max-age=900; SameSite=Lax`;
 
       // Redirect based on role
       const role: string = user.role;
