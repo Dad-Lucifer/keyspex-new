@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, UserPlus, ShieldAlert, CheckCircle2, Eye, EyeOff } from "lucide-react";
+import { X, UserPlus, ShieldAlert, CheckCircle2, Eye, EyeOff, Phone, Mail, Globe } from "lucide-react";
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -21,6 +21,9 @@ export function CreateUserModal({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [contactNo, setContactNo] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [portfolioUrl, setPortfolioUrl] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -32,6 +35,25 @@ export function CreateUserModal({
     setStatus("submitting");
 
     // Client-side quick validation matching backend schema
+    if (!displayName.trim() || displayName.trim().length < 2) {
+      setStatus("error");
+      setErrorMessage("Full Name is required and must be at least 2 characters.");
+      return;
+    }
+
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setStatus("error");
+      setErrorMessage("A valid work email address is required.");
+      return;
+    }
+
+    const digitsOnly = contactNo.trim().replace(/\D/g, "");
+    if (!contactNo.trim() || digitsOnly.length < 7 || digitsOnly.length > 15) {
+      setStatus("error");
+      setErrorMessage("Contact number is required and must contain between 7 and 15 digits.");
+      return;
+    }
+
     if (password.length < 8 || !/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
       setStatus("error");
       setErrorMessage(
@@ -59,7 +81,10 @@ export function CreateUserModal({
           displayName: displayName.trim(),
           email: email.trim().toLowerCase(),
           password,
+          contactNo: contactNo.trim(),
           role,
+          ...(contactEmail.trim() ? { contactEmail: contactEmail.trim().toLowerCase() } : {}),
+          ...(portfolioUrl.trim() ? { portfolioUrl: portfolioUrl.trim() } : {}),
         }),
       });
 
@@ -87,9 +112,9 @@ export function CreateUserModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-md rounded-2xl border border-[#e2e8f0] bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-150">
+      <div className="w-full max-w-md max-h-[92vh] flex flex-col rounded-2xl border border-[#e2e8f0] bg-white shadow-2xl animate-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#f1f5f9]">
+        <div className="flex items-center justify-between p-6 pb-4 border-b border-[#f1f5f9] shrink-0">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
               <UserPlus size={18} />
@@ -112,7 +137,8 @@ export function CreateUserModal({
           </button>
         </div>
 
-        {/* Form */}
+        {/* Form Body */}
+        <div className="overflow-y-auto px-6 py-4">
         {status === "success" ? (
           <div className="py-8 flex flex-col items-center justify-center text-center">
             <CheckCircle2 size={48} className="text-emerald-500 mb-2 animate-bounce" />
@@ -122,7 +148,7 @@ export function CreateUserModal({
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="py-4 space-y-4">
+          <form id="create-user-form" onSubmit={handleSubmit} className="space-y-4">
             {errorMessage && (
               <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">
                 <ShieldAlert size={16} className="shrink-0 mt-0.5 text-red-600" />
@@ -194,7 +220,7 @@ export function CreateUserModal({
             {/* Password */}
             <div>
               <label className="mb-1.5 block font-mono text-[10px] uppercase font-bold tracking-wider text-[#64748b]">
-                Temporary Password *
+                Password *
               </label>
               <div className="relative">
                 <input
@@ -218,25 +244,76 @@ export function CreateUserModal({
               </p>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#f1f5f9]">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={status === "submitting"}
-                className="rounded-xl border border-[#e2e8f0] px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-[#f8fafc]"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={status === "submitting"}
-                className="flex items-center gap-1.5 rounded-xl bg-[#2563eb] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1d4ed8] disabled:opacity-60"
-              >
-                {status === "submitting" ? "Provisioning..." : "Create Account →"}
-              </button>
+            {/* Contact Details (Contact No & Contact Mail) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase font-bold tracking-wider text-[#64748b]">
+                  <Phone size={11} className="text-[#94a3b8]" />
+                  Contact No *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={contactNo}
+                  onChange={(e) => setContactNo(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-xs text-[#0f172a] placeholder-[#94a3b8] outline-none focus:border-[#2563eb] focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase font-bold tracking-wider text-[#64748b]">
+                  <Mail size={11} className="text-[#94a3b8]" />
+                  Contact Mail
+                </label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  placeholder="direct@example.com"
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-xs text-[#0f172a] placeholder-[#94a3b8] outline-none focus:border-[#2563eb] focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                />
+              </div>
+            </div>
+
+            {/* Portfolio URL */}
+            <div>
+              <label className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase font-bold tracking-wider text-[#64748b]">
+                <Globe size={11} className="text-[#94a3b8]" />
+                Portfolio URL
+              </label>
+              <input
+                type="text"
+                value={portfolioUrl}
+                onChange={(e) => setPortfolioUrl(e.target.value)}
+                placeholder="https://portfolio.me or website"
+                className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-xs text-[#0f172a] placeholder-[#94a3b8] outline-none focus:border-[#2563eb] focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+              />
             </div>
           </form>
+        )}
+        </div>
+
+        {/* Footer Actions */}
+        {status !== "success" && (
+          <div className="flex items-center justify-end gap-2 p-6 pt-3 border-t border-[#f1f5f9] shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={status === "submitting"}
+              className="rounded-xl border border-[#e2e8f0] px-4 py-2 text-xs font-semibold text-[#475569] hover:bg-[#f8fafc]"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              form="create-user-form"
+              disabled={status === "submitting"}
+              className="flex items-center gap-1.5 rounded-xl bg-[#2563eb] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#1d4ed8] disabled:opacity-60 cursor-pointer"
+            >
+              {status === "submitting" ? "Provisioning..." : "Create Account →"}
+            </button>
+          </div>
         )}
       </div>
     </div>

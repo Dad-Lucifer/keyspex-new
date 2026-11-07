@@ -12,6 +12,9 @@ export interface UserRecord {
   updatedAt: Timestamp;
   active: boolean;
   lastLoginAt?: Timestamp;
+  contactNo?: string;
+  contactEmail?: string;
+  portfolioUrl?: string;
 }
 
 export interface JwtPayload {

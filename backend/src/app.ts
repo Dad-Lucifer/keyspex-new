@@ -13,6 +13,8 @@ import projectRoutes from "./routes/project.routes";
 import obligationRoutes from "./routes/obligation.routes";
 import eventRoutes from "./routes/event.routes";
 import auditRoutes from "./routes/audit.routes";
+import inquiryRoutes from "./routes/inquiry.routes";
+import payrollRoutes from "./routes/payroll.routes";
 
 // Initialize Firebase (side effect import)
 import "./config/firebase";
@@ -65,6 +67,8 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/obligations", obligationRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/audit-log", auditRoutes);
+app.use("/api/inquiries", inquiryRoutes);
+app.use("/api/payroll", payrollRoutes);
 
 // ── Health check
 app.get("/health", (_req, res) => {

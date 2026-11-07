@@ -25,6 +25,9 @@ interface UserRecordItem {
   active: boolean;
   createdAt?: any;
   lastLoginAt?: any;
+  contactNo?: string;
+  contactEmail?: string;
+  portfolioUrl?: string;
 }
 
 interface UserManagementViewProps {
@@ -345,6 +348,29 @@ export function UserManagementView({
                           <p className="font-mono text-[10px] text-[#64748b]">
                             {user.email}
                           </p>
+                          {(user.contactNo || user.contactEmail || user.portfolioUrl) && (
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5 font-mono text-[10px] text-[#64748b]">
+                              {user.contactNo && <span>{user.contactNo}</span>}
+                              {user.contactEmail && user.contactEmail !== user.email && (
+                                <span>• {user.contactEmail}</span>
+                              )}
+                              {user.portfolioUrl && (
+                                <a
+                                  href={
+                                    user.portfolioUrl.startsWith("http://") ||
+                                    user.portfolioUrl.startsWith("https://")
+                                      ? user.portfolioUrl
+                                      : `https://${user.portfolioUrl}`
+                                  }
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[#2563eb] hover:underline"
+                                >
+                                  ↗ Portfolio
+                                </a>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>

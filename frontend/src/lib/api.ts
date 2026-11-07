@@ -10,6 +10,51 @@ export function getAuthToken(): string | null {
   return sessionStorage.getItem("ks_access_token");
 }
 
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
+async function silentRefreshToken(): Promise<string | null> {
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        throw new Error("Refresh token expired or invalid");
+      }
+
+      const json = await res.json();
+      const newAccessToken = json?.data?.accessToken;
+      if (newAccessToken && typeof window !== "undefined") {
+        sessionStorage.setItem("ks_access_token", newAccessToken);
+        document.cookie = `ks_token=${newAccessToken}; path=/; max-age=900; SameSite=Lax`;
+        return newAccessToken;
+      }
+      return null;
+    } catch {
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("ks_access_token");
+        sessionStorage.removeItem("ks_user");
+        document.cookie = "ks_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "ks_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
+      return null;
+    } finally {
+      isRefreshing = false;
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 export async function fetchWithAuth<T>(
   endpoint: string,
   options: RequestInit = {}
@@ -24,11 +69,28 @@ export async function fetchWithAuth<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+  let res = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
     credentials: "include",
   });
+
+  // Silent automatic token refresh if token expired (401)
+  if (
+    res.status === 401 &&
+    !endpoint.includes("/auth/refresh") &&
+    !endpoint.includes("/auth/login")
+  ) {
+    const newToken = await silentRefreshToken();
+    if (newToken) {
+      headers.set("Authorization", `Bearer ${newToken}`);
+      res = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers,
+        credentials: "include",
+      });
+    }
+  }
 
   if (!res.ok) {
     let errMessage = `HTTP ${res.status}: ${res.statusText}`;
@@ -140,6 +202,31 @@ export interface AuditLogItem {
   status: "Completed" | "Verified" | "Reconciled" | "Updated" | "Failed" | "Pending";
 }
 
+export interface SalaryItem {
+  id: string;
+  employeeUid: string;
+  employeeName: string;
+  employeeEmail: string;
+  amount: number;
+  period: string;
+  paymentMethod: string;
+  notes?: string;
+  status: "paid" | "processing" | "failed";
+  paidAt: { _seconds: number; _nanoseconds: number } | string;
+  paidBy?: string;
+  paidByName?: string;
+}
+
+export interface CreateSalaryInput {
+  employeeUid: string;
+  employeeName: string;
+  employeeEmail: string;
+  amount: number;
+  period?: string;
+  paymentMethod?: string;
+  notes?: string;
+}
+
 // ── API Methods ────────────────────────────────────────────────────────────
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
@@ -194,5 +281,30 @@ export async function getAuditLog(limit = 10): Promise<AuditLogItem[]> {
     `/api/audit-log?limit=${limit}`
   );
   return json.data.entries;
+}
+
+export async function getSalaries(limit = 100): Promise<SalaryItem[]> {
+  const json = await fetchWithAuth<{ success: boolean; data: { salaries: SalaryItem[] } }>(
+    `/api/payroll?limit=${limit}`
+  );
+  return json.data.salaries;
+}
+
+export async function disburseSalary(
+  data: CreateSalaryInput
+): Promise<{ success: boolean; message: string; salary: SalaryItem }> {
+  const json = await fetchWithAuth<{
+    success: boolean;
+    message: string;
+    data: { salary: SalaryItem };
+  }>("/api/payroll", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  return {
+    success: json.success,
+    message: json.message,
+    salary: json.data.salary,
+  };
 }
 

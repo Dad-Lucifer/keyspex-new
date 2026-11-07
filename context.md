@@ -108,13 +108,17 @@ backend/src/
 │   ├── project.routes.ts     ← /api/projects CRUD (admin only)
 │   ├── obligation.routes.ts  ← /api/obligations CRUD (admin only)
 │   ├── event.routes.ts       ← /api/events CRUD (admin only)
-│   └── audit.routes.ts       ← /api/audit-log GET (admin only)
+│   ├── audit.routes.ts       ← /api/audit-log GET (admin only)
+│   ├── inquiry.routes.ts     ← /api/inquiries POST (public, rate-limited) & GET (admin only)
+│   └── payroll.routes.ts     ← /api/payroll POST disburse & GET ledger/summary (admin only)
 ├── schemas/
 │   ├── auth.schema.ts        ← `loginSchema` (email, password ≥8 chars)
-│   ├── user.schema.ts        ← `createUserSchema`, `updateUserSchema`
+│   ├── user.schema.ts        ← `createUserSchema` (strict, contactNo required), `updateUserSchema`
 │   ├── project.schema.ts     ← `createProjectSchema`, `updateProjectSchema`
 │   ├── obligation.schema.ts  ← `createObligationSchema`, `updateObligationSchema`
-│   └── event.schema.ts       ← `createEventSchema`, `updateEventSchema`
+│   ├── event.schema.ts       ← `createEventSchema`, `updateEventSchema`
+│   ├── inquiry.schema.ts     ← `createInquirySchema` (name, email, phone, service, message)
+│   └── payroll.schema.ts     ← `createSalaryPaymentSchema` (employeeUid, name, email, amount, period)
 ├── services/
 │   ├── auth.service.ts       ← `loginUser`, `refreshTokens`, `logoutUser`
 │   ├── user.service.ts       ← `createUser`, `listUsers`, `getUserById`, `updateUser`, `deleteUser`
@@ -122,7 +126,9 @@ backend/src/
 │   ├── project.service.ts    ← `listProjects`, `getProjectById`, `createProject`, `updateProject`, `deleteProject`
 │   ├── obligation.service.ts ← `listObligations`, `getObligationById`, `createObligation`, `updateObligation`, `deleteObligation`
 │   ├── event.service.ts      ← `listEvents`, `getEventById`, `createEvent`, `updateEvent`, `deleteEvent`
-│   └── auditLog.service.ts   ← `logAction`, `getRecentActivity`
+│   ├── auditLog.service.ts   ← `logAction`, `getRecentActivity`
+│   ├── inquiry.service.ts    ← `createInquiry`, `listInquiries`
+│   └── payroll.service.ts    ← `disburseSalary`, `listSalaries`, `getPayrollSummary`
 ├── types/
 │   ├── index.ts              ← `UserRole`, `UserRecord`, `JwtPayload`, `AuthTokens`
 │   └── dashboard.ts          ← All dashboard types (metrics, project, obligation, event, audit log)
@@ -199,9 +205,12 @@ All routes require `authenticate`. Role enforcement via `requireRole("admin")`.
 ```typescript
 interface UserRecord {
   uid: string;           // Firebase Auth UID (also the Firestore doc ID)
-  email: string;         // lowercase
+  email: string;         // lowercase work email
   role: "admin" | "employee" | "client";
   displayName: string;
+  contactNo: string;     // REQUIRED: 7-20 chars, 7-15 digits
+  contactEmail?: string; // optional secondary/personal email
+  portfolioUrl?: string; // optional portfolio/website URL
   createdBy?: string;    // uid of admin who created this user (not set for super-admin)
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -322,7 +331,8 @@ frontend/src/
 │   │   ├── RecentActivity.tsx       ← Live audit log table (actors, actions, timestamps, badges)
 │   │   ├── UpcomingEvents.tsx       ← Calendar reviews, client syncs & deadlines
 │   │   ├── CreateUserModal.tsx      ← Modal dialog for creating employee/client via POST /api/users
-│   │   └── UserManagementView.tsx   ← Live directory view for employees/clients (toggle active, delete)
+│   │   ├── UserManagementView.tsx   ← Live directory view for employees/clients (toggle active, delete)
+│   │   └── PayrollManagementView.tsx ← Full interactive salary payout console (employee select, amount, disburse)
 │   ├── hero/
 │   │   ├── Hero.tsx                 ← Hero wrapper (HeroVisualStage + HeroStatement + HeroTicker)
 │   │   ├── HeroVisualStage.tsx      ← GSAP animated 8-scene service showcase (~1334 lines)
@@ -448,6 +458,11 @@ The Admin Dashboard provides an executive command center ("Enterprise OS") desig
    - `+ Create New` button opens `CreateUserModal.tsx`, validating and dispatching to `POST /api/users`.
 9. **Financial Export**:
    - "Export Report" button generates and downloads a clean CSV summary of current financial performance and project shares.
+10. **Payroll & Salaries Console (`PayrollManagementView.tsx`)**:
+   - Live connected to `GET /api/payroll`, `GET /api/payroll/summary`, and `POST /api/payroll`.
+   - Allows selecting active staff from `GET /api/users?role=employee`, entering salary with quick preset chips, pay period, and payment method.
+   - Authorizes single-click payout disbursement stored in Firestore `salaries` collection and writes to enterprise `auditLog`.
+   - Displays real-time ledger table with search filtering and CSV ledger export.
 
 ### Content Layer (`src/content/site.ts`)
 
@@ -831,6 +846,65 @@ Returns `limit` most recent entries (max 100).
 
 ---
 
+### Inquiry Endpoints
+
+#### `POST /api/inquiries` (Public, Rate Limited: 5/15min per IP)
+Submits a prospective client consultation lead.
+```json
+{
+  "name": "Rahul Sharma",
+  "email": "rahul@company.com",
+  "phone": "+91 98765 43210",
+  "service": "Business Portfolio Website",
+  "message": "We need a modern website with client portal."
+}
+```
+Response (201):
+```json
+{
+  "success": true,
+  "message": "Inquiry received successfully. Our team will contact you shortly.",
+  "data": { "id": "inq-auto-id" }
+}
+```
+
+#### `GET /api/inquiries` (Admin Only)
+Fetches recent client inquiries with status (`new | contacted | closed`).
+
+---
+
+### Payroll & Salaries Endpoints (Admin Only)
+
+#### `POST /api/payroll`
+Disburses and records a salary payment into the `salaries` Firestore collection and auto-generates an audit log entry.
+```json
+{
+  "employeeUid": "emp-1001",
+  "employeeName": "Riya Sharma",
+  "employeeEmail": "riya.sharma@brand.com",
+  "amount": 45000,
+  "period": "November 2024",
+  "paymentMethod": "Direct Bank Transfer (NEFT/ACH)",
+  "notes": "November regular salary"
+}
+```
+Response (201):
+```json
+{
+  "success": true,
+  "message": "Salary of ₹45,000 successfully disbursed to Riya Sharma.",
+  "data": { "salary": { "id": "...", "amount": 45000, "status": "paid" } }
+}
+```
+
+#### `GET /api/payroll?limit=100`
+Returns historical salary disbursements from `salaries` collection ordered by `paidAt` descending.
+
+#### `GET /api/payroll/summary`
+Returns payroll aggregates: `totalDisbursed`, `disbursementsCount`, `averageSalary`, `currentPeriod`.
+
+---
+
 ## 7. User Roles & Permissions
 
 | Role | Can Create Users | Can List All Users | Can Read Any User | Can Update Any User | Can Delete Users |
@@ -846,10 +920,10 @@ Returns `limit` most recent entries (max 100).
 ## 8. Known TODOs & Incomplete Work
 
 ### Critical / Must-Do
-1. **Dashboard pages status** — `/dashboard/admin` is fully implemented and end-to-end bound to the backend REST API (`/api/dashboard/metrics`, `/api/dashboard/revenue`, `/api/dashboard/budget`, `/api/projects`, `/api/obligations`, `/api/events`, `/api/audit-log`, and `/api/users`). `/dashboard/employee` and `/dashboard/client` remain to be built.
-2. **Contact form is a stub** — `ContactSection.tsx` `handleSubmit` does not send data anywhere. Needs a backend endpoint + integration.
+1. **Dashboard pages status** — `/dashboard/admin` is fully implemented and end-to-end bound to the backend REST API (`/api/dashboard/metrics`, `/api/dashboard/revenue`, `/api/dashboard/budget`, `/api/projects`, `/api/obligations`, `/api/events`, `/api/audit-log`, `/api/users`, and `/api/payroll`). Features full executive oversight, directory management, hardened user provisioning (`CreateUserModal.tsx`), and real-time payroll disbursement (`PayrollManagementView.tsx`). `/dashboard/employee` and `/dashboard/client` remain to be built.
+2. ~~Contact form is a stub~~ *(RESOLVED)*: Implemented end-to-end inquiry pipeline with rate limiting (5 req/15min), `createInquirySchema` validation, Firestore `inquiries` collection, and connected `ContactSection.tsx` with live error/success handling.
 3. **Contact info placeholders** — `site.contact.email` and `site.contact.phone` have `// TODO: confirm` comments. Real values need to be filled in `src/content/site.ts`.
-4. **Token refresh logic** — No automatic token refresh on the frontend. When `accessToken` expires (15m), user gets logged out silently. Needs an API wrapper/interceptor that calls `/api/auth/refresh` automatically.
+4. ~~Token refresh logic~~ *(RESOLVED)*: Implemented transparent 401 silent token refresh in `frontend/src/lib/api.ts` (`silentRefreshToken`) using a shared promise mutex to automatically rotate tokens and retry failed requests without interrupting the user.
 5. **Logout is not secure** — Backend `logoutUser()` function is a stub. The refresh token cookie is cleared client-side but the refresh token is not invalidated/blacklisted server-side. Same refresh token could potentially be reused.
 
 ### Medium Priority
@@ -958,6 +1032,8 @@ cd frontend && npm run build
 | `auditLog` | auto Firestore ID | Activity log entries (actor, action, target, status) |
 | `financials` | `"current"` | Live financial snapshot (allocatedCap, committedSpent, segments) |
 | `revenueSnapshots` | `"YYYY-MM"` | Monthly revenue totals for chart (yearMonth, amount) |
+| `salaries` | auto Firestore ID | Disbursed employee salary records (employeeUid, name, email, amount, period, status) |
+| `inquiries` | auto Firestore ID | Client inquiries from contact form (name, email, phone, service, message) |
 
 ### Seed Script
 ```bash
@@ -979,6 +1055,8 @@ Seeds all dashboard collections with realistic demo data. Safe to run multiple t
 | Modify Dashboard Sidebar / Header | `frontend/src/components/dashboard/Sidebar.tsx`, `Header.tsx` |
 | Modify Dashboard Charts & Metrics | `frontend/src/components/dashboard/RevenueChart.tsx`, `MetricCards.tsx`, `BudgetUtilization.tsx` |
 | Modify User Management views | `frontend/src/components/dashboard/UserManagementView.tsx`, `CreateUserModal.tsx` |
+| Modify Payroll & Salaries console | `frontend/src/components/dashboard/PayrollManagementView.tsx`, `backend/src/routes/payroll.routes.ts`, `backend/src/services/payroll.service.ts` |
+| Modify Contact Inquiry pipeline | `frontend/src/components/sections/ContactSection.tsx`, `backend/src/routes/inquiry.routes.ts`, `backend/src/services/inquiry.service.ts` |
 | Add a new API route | `backend/src/routes/` + `backend/src/services/` |
 | Modify dashboard KPI aggregation | `backend/src/services/dashboard.service.ts` |
 | Modify project CRUD logic | `backend/src/services/project.service.ts` |

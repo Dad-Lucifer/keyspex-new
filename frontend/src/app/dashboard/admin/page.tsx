@@ -24,6 +24,7 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { UpcomingEvents } from "@/components/dashboard/UpcomingEvents";
 import { CreateUserModal } from "@/components/dashboard/CreateUserModal";
 import { UserManagementView } from "@/components/dashboard/UserManagementView";
+import { PayrollManagementView } from "@/components/dashboard/PayrollManagementView";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -297,6 +298,11 @@ export default function AdminDashboardPage() {
               roleFilter="client"
               onBackToDashboard={() => setCurrentTab("dashboard")}
               onRefreshStats={() => setClientCount((prev) => prev + 1)}
+            />
+          ) : currentTab === "payroll" ? (
+            <PayrollManagementView
+              currency={currency}
+              onBackToDashboard={() => setCurrentTab("dashboard")}
             />
           ) : (
             <>

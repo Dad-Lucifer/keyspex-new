@@ -24,3 +24,17 @@ export const apiRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+export const inquiryRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: {
+      code: "RATE_LIMITED",
+      message: "Too many inquiries submitted from this IP. Please try again after 15 minutes.",
+    },
+  },
+});
+

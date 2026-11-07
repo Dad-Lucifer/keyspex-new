@@ -5,6 +5,7 @@ import { site } from "@/content/site";
 
 export function ContactSection() {
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -50,13 +51,38 @@ export function ContactSection() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
     setStatus("submitting");
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+      const res = await fetch(`${apiUrl}/api/inquiries`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name.trim(),
+          email: form.email.trim().toLowerCase(),
+          phone: form.phone.trim() || undefined,
+          service: form.service.trim() || undefined,
+          message: form.message.trim(),
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(
+          data?.error?.message ||
+            (data?.error?.details
+              ? data.error.details.map((d: any) => d.message).join(", ")
+              : "Unable to submit inquiry at this moment. Please try again.")
+        );
+      }
+
       setStatus("success");
-    } catch {
+    } catch (err: any) {
       setStatus("error");
+      setErrorMessage(err.message || "Something went wrong. Please try again later.");
     }
   };
 
@@ -160,6 +186,11 @@ export function ContactSection() {
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
+                  {errorMessage && (
+                    <div className="border border-red-300 bg-red-50 p-4 font-mono text-xs text-red-700">
+                      ⚠ {errorMessage}
+                    </div>
+                  )}
                   <div className="grid gap-6 sm:grid-cols-2">
                     <div>
                       <label

@@ -61,6 +61,8 @@ declare module 'lucide-react' {
   export const UserPlus: LucideIcon;
   export const Lock: LucideIcon;
   export const Mail: LucideIcon;
+  export const Phone: LucideIcon;
+  export const Globe: LucideIcon;
   export const Eye: LucideIcon;
   export const EyeOff: LucideIcon;
   export const Layers: LucideIcon;
