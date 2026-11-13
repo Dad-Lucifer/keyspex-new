@@ -9,14 +9,14 @@ interface BudgetUtilizationProps {
 }
 
 const DEFAULT_BUDGET: BudgetData = {
-  allocatedCap: 1200000,
-  committedSpent: 845000,
-  remainingBuffer: 355000,
-  utilizedPercent: 70.4,
+  allocatedCap: 0,
+  committedSpent: 0,
+  remainingBuffer: 0,
+  utilizedPercent: 0,
   segments: [
-    { name: "Operations", amountInLakhs: 4.2, percent: 49.7 },
-    { name: "Payroll", amountInLakhs: 2.8, percent: 33.1 },
-    { name: "Infra & SaaS", amountInLakhs: 1.45, percent: 17.2 },
+    { name: "Operations", amountInLakhs: 0, percent: 0 },
+    { name: "Payroll", amountInLakhs: 0, percent: 0 },
+    { name: "Infra & SaaS", amountInLakhs: 0, percent: 0 },
   ],
 };
 

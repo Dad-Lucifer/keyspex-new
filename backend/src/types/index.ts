@@ -15,6 +15,7 @@ export interface UserRecord {
   contactNo?: string;
   contactEmail?: string;
   portfolioUrl?: string;
+  jobTitle?: string;        // e.g. "Full Stack Developer", "UI/UX Designer"
 }
 
 export interface JwtPayload {

@@ -47,78 +47,6 @@ export function UserManagementView({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
-  // Fallback demo users if backend is offline or empty
-  const defaultDemoUsers: UserRecordItem[] =
-    roleFilter === "employee"
-      ? [
-          {
-            uid: "emp-1001",
-            email: "riya.sharma@brand.com",
-            displayName: "Riya Sharma",
-            role: "employee",
-            active: true,
-            lastLoginAt: "Today, 10:45 AM",
-          },
-          {
-            uid: "emp-1002",
-            email: "marcus.vance@brand.com",
-            displayName: "Marcus Vance",
-            role: "employee",
-            active: true,
-            lastLoginAt: "Yesterday, 04:30 PM",
-          },
-          {
-            uid: "emp-1003",
-            email: "priya.nair@brand.com",
-            displayName: "Priya Nair",
-            role: "employee",
-            active: true,
-            lastLoginAt: "2 days ago",
-          },
-          {
-            uid: "emp-1004",
-            email: "rahul.verma@brand.com",
-            displayName: "Rahul Verma",
-            role: "employee",
-            active: false,
-            lastLoginAt: "Last week",
-          },
-        ]
-      : [
-          {
-            uid: "cli-2001",
-            email: "contact@apexglobal.com",
-            displayName: "Apex Global Corp",
-            role: "client",
-            active: true,
-            lastLoginAt: "Yesterday, 02:15 PM",
-          },
-          {
-            uid: "cli-2002",
-            email: "billing@nexasystems.io",
-            displayName: "Nexa Systems",
-            role: "client",
-            active: true,
-            lastLoginAt: "3 days ago",
-          },
-          {
-            uid: "cli-2003",
-            email: "ops@vertexlabs.com",
-            displayName: "Vertex Labs",
-            role: "client",
-            active: true,
-            lastLoginAt: "5 days ago",
-          },
-          {
-            uid: "cli-2004",
-            email: "admin@novacustoms.in",
-            displayName: "Nova Customs",
-            role: "client",
-            active: true,
-            lastLoginAt: "Oct 18, 2024",
-          },
-        ];
-
   const fetchUsers = async () => {
     setLoading(true);
     try {
@@ -136,17 +64,17 @@ export function UserManagementView({
       });
 
       if (!res.ok) {
-        throw new Error("Unable to fetch users from backend, using current state.");
+        throw new Error("Unable to fetch users from backend.");
       }
 
       const json = await res.json();
-      if (json?.data?.users && json.data.users.length > 0) {
+      if (json?.data?.users) {
         setUsers(json.data.users);
       } else {
-        setUsers(defaultDemoUsers);
+        setUsers([]);
       }
     } catch {
-      setUsers(defaultDemoUsers);
+      setUsers([]);
     } finally {
       setLoading(false);
     }

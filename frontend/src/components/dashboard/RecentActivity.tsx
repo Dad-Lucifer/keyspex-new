@@ -4,68 +4,21 @@ import React, { useState, useEffect } from "react";
 import { ArrowUpRight, Bot, Loader2 } from "lucide-react";
 import { getAuditLog, AuditLogItem } from "@/lib/api";
 
-const DEFAULT_ACTIVITIES = [
-  {
-    id: "ACT-1",
-    actor: {
-      name: "Alex Rivera",
-      role: "Super Admin",
-      avatar: "AR",
-      bg: "bg-[#2563eb] text-white",
-    },
-    action: "Created Contract CON-5001",
-    target: "Apex Global (CLI-2001)",
-    time: "10m ago",
-    status: "Completed",
-    statusBadge: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    dotColor: "bg-emerald-500",
-  },
-  {
-    id: "ACT-2",
-    actor: {
-      name: "Riya Sharma",
-      role: "HR Operations",
-      avatar: "RS",
-      bg: "bg-purple-600 text-white",
-    },
-    action: "Approved Salary Slip for EMP-1004",
-    target: "DevOps Lead • Nov Run",
-    time: "1h ago",
-    status: "Verified",
-    statusBadge: "bg-blue-50 text-blue-700 border-blue-200",
-    dotColor: "bg-blue-500",
-  },
-  {
-    id: "ACT-3",
-    actor: {
-      name: "Finance Bot",
-      role: "Automated Job",
-      avatar: "BOT",
-      bg: "bg-slate-700 text-white",
-    },
-    action: "Recorded Inward Payment PAY-6001",
-    target: "₹85,000 from Nexa Systems",
-    time: "3h ago",
-    status: "Reconciled",
-    statusBadge: "bg-teal-50 text-teal-700 border-teal-200",
-    dotColor: "bg-teal-500",
-  },
-  {
-    id: "ACT-4",
-    actor: {
-      name: "Marcus Vance",
-      role: "Project Lead",
-      avatar: "MV",
-      bg: "bg-amber-600 text-white",
-    },
-    action: "Reassigned Task TSK-4012",
-    target: "Fintech Banking UI (PRJ-3002)",
-    time: "5h ago",
-    status: "Updated",
-    statusBadge: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    dotColor: "bg-indigo-500",
-  },
-];
+interface DisplayActivityItem {
+  id: string;
+  actor: {
+    name: string;
+    role: string;
+    avatar: string;
+    bg: string;
+  };
+  action: string;
+  target: string;
+  time: string;
+  status: string;
+  statusBadge: string;
+  dotColor: string;
+}
 
 function formatRelativeTime(time: { _seconds: number } | string | undefined): string {
   if (!time) return "just now";
@@ -85,7 +38,7 @@ function formatRelativeTime(time: { _seconds: number } | string | undefined): st
 }
 
 export function RecentActivity() {
-  const [activities, setActivities] = useState(DEFAULT_ACTIVITIES);
+  const [activities, setActivities] = useState<DisplayActivityItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -93,7 +46,7 @@ export function RecentActivity() {
     getAuditLog(10)
       .then((data: AuditLogItem[]) => {
         if (isMounted && data && data.length > 0) {
-          const mapped = data.map((act) => {
+          const mapped: DisplayActivityItem[] = data.map((act) => {
             const isBot =
               act.actor.name.toLowerCase().includes("bot") ||
               act.actor.role === "system";
@@ -140,10 +93,12 @@ export function RecentActivity() {
           });
 
           setActivities(mapped);
+        } else if (isMounted) {
+          setActivities([]);
         }
       })
       .catch(() => {
-        // Fallback to default
+        if (isMounted) setActivities([]);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -187,51 +142,59 @@ export function RecentActivity() {
             </tr>
           </thead>
           <tbody className="divide-y divide-[#f8fafc]">
-            {activities.map((act) => (
-              <tr key={act.id} className="hover:bg-[#f8fafc] transition-colors">
-                {/* Actor */}
-                <td className="py-3 px-2">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-bold shadow-2xs ${act.actor.bg}`}
-                    >
-                      {act.actor.avatar === "BOT" ? (
-                        <Bot size={14} />
-                      ) : (
-                        act.actor.avatar
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-[#0f172a]">{act.actor.name}</p>
-                      <p className="font-mono text-[10px] text-[#64748b]">
-                        {act.actor.role}
-                      </p>
-                    </div>
-                  </div>
-                </td>
-
-                {/* Action & Target */}
-                <td className="py-3 px-2">
-                  <p className="font-medium text-[#0f172a]">{act.action}</p>
-                  <p className="font-mono text-[10px] text-[#64748b]">{act.target}</p>
-                </td>
-
-                {/* Time */}
-                <td className="py-3 px-2 font-mono text-[11px] text-[#64748b] whitespace-nowrap">
-                  {act.time}
-                </td>
-
-                {/* Status Badge */}
-                <td className="py-3 px-2 text-right">
-                  <span
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold ${act.statusBadge}`}
-                  >
-                    <span className={`h-1.5 w-1.5 rounded-full ${act.dotColor}`} />
-                    {act.status}
-                  </span>
+            {activities.length === 0 && !isLoading ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-xs text-[#94a3b8]">
+                  No recent activity logged yet
                 </td>
               </tr>
-            ))}
+            ) : (
+              activities.map((act) => (
+                <tr key={act.id} className="hover:bg-[#f8fafc] transition-colors">
+                  {/* Actor */}
+                  <td className="py-3 px-2">
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-[10px] font-bold shadow-2xs ${act.actor.bg}`}
+                      >
+                        {act.actor.avatar === "BOT" ? (
+                          <Bot size={14} />
+                        ) : (
+                          act.actor.avatar
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#0f172a]">{act.actor.name}</p>
+                        <p className="font-mono text-[10px] text-[#64748b]">
+                          {act.actor.role}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Action & Target */}
+                  <td className="py-3 px-2">
+                    <p className="font-medium text-[#0f172a]">{act.action}</p>
+                    <p className="font-mono text-[10px] text-[#64748b]">{act.target}</p>
+                  </td>
+
+                  {/* Time */}
+                  <td className="py-3 px-2 font-mono text-[11px] text-[#64748b] whitespace-nowrap">
+                    {act.time}
+                  </td>
+
+                  {/* Status Badge */}
+                  <td className="py-3 px-2 text-right">
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 font-mono text-[10px] font-bold ${act.statusBadge}`}
+                    >
+                      <span className={`h-1.5 w-1.5 rounded-full ${act.dotColor}`} />
+                      {act.status}
+                    </span>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

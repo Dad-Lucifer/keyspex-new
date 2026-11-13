@@ -7,13 +7,6 @@ import type {
   BudgetSegment,
 } from "../types/dashboard";
 
-// ─── Hardcoded Fiscal Config ─────────────────────────────────────────────────
-// In production these would live in a Firestore `config/fiscal` document.
-// Values are in INR.
-
-const FISCAL_ALLOCATED_CAP = 12_00_000;    // ₹12,00,000
-const FISCAL_YEAR = 2024;
-
 // ─── Metrics ─────────────────────────────────────────────────────────────────
 
 /**
@@ -54,13 +47,13 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
 
   // ── Financials (from persisted snapshot; fall back to computed values)
   const fin = financialsSnap.exists ? financialsSnap.data()! : {};
-  const totalBudget: number = (fin.allocatedCap as number) ?? FISCAL_ALLOCATED_CAP;
+  const totalBudget: number = (fin.allocatedCap as number) ?? totalRevenue;
   const committedSpent: number = (fin.committedSpent as number) ?? totalRevenue;
   const budgetUtilizationPercent = totalBudget > 0
     ? Math.round((committedSpent / totalBudget) * 1000) / 10
     : 0;
-  const salaryPayable: number = (fin.salaryPayable as number) ?? 2_40_000;
-  const salaryDueDate: string = (fin.salaryDueDate as string) ?? "Nov 1";
+  const salaryPayable: number = (fin.salaryPayable as number) ?? 0;
+  const salaryDueDate: string = (fin.salaryDueDate as string) ?? "Upcoming";
   const salaryStaffCount: number = (fin.salaryStaffCount as number) ?? totalEmployees;
 
   return {
@@ -99,7 +92,7 @@ export async function getRevenueData(period: RevenuePeriod): Promise<RevenueChar
     .get();
 
   if (snapshot.empty) {
-    return buildFallbackRevenue(period);
+    return buildEmptyRevenue(period);
   }
 
   // Build maps: "YYYY-MM" → amount
@@ -139,15 +132,15 @@ export async function getBudgetData(): Promise<BudgetData> {
   ]);
 
   const fin = finDoc.exists ? finDoc.data()! : {};
-  const allocatedCap: number = (fin.allocatedCap as number) ?? FISCAL_ALLOCATED_CAP;
 
   // Derive committedSpent from projects if not stored
   const totalProjectRevenue = projectsSnap.docs.reduce(
     (sum, doc) => sum + ((doc.data().amount as number) ?? 0),
     0
   );
+  const allocatedCap: number = (fin.allocatedCap as number) ?? totalProjectRevenue;
   const committedSpent: number = (fin.committedSpent as number) ?? totalProjectRevenue;
-  const remainingBuffer = allocatedCap - committedSpent;
+  const remainingBuffer = Math.max(0, allocatedCap - committedSpent);
   const utilizedPercent =
     allocatedCap > 0 ? Math.round((committedSpent / allocatedCap) * 1000) / 10 : 0;
 
@@ -178,32 +171,27 @@ function toYearMonth(d: Date): string {
 }
 
 /**
- * Fallback demo revenue data matching the design mockup.
- * Returned when `revenueSnapshots` collection is empty.
+ * Empty revenue data returned when `revenueSnapshots` collection is empty.
  */
-function buildFallbackRevenue(period: RevenuePeriod): RevenueChartData {
-  const allMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const allCurrent = [
-    2_20_000, 2_40_000, 2_60_000, 3_00_000, 3_20_000, 3_80_000,
-    4_50_000, 5_20_000, 6_00_000, 7_80_000, 8_00_000, 8_45_000,
-  ];
-  const allPrevious = [
-    1_80_000, 1_90_000, 2_10_000, 2_30_000, 2_60_000, 3_00_000,
-    3_60_000, 4_00_000, 4_80_000, 5_60_000, 6_20_000, 7_00_000,
-  ];
-
+function buildEmptyRevenue(period: RevenuePeriod): RevenueChartData {
   const count = periodToMonthCount(period);
-  const curMonth = new Date().getMonth(); // 0-based
+  const now = new Date();
+  const months: string[] = [];
+  const current: number[] = [];
+  const previous: number[] = [];
 
-  // Slice the last `count` months up to and including current month
-  const start = Math.max(0, curMonth + 1 - count);
-  const end = curMonth + 1;
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(d.toLocaleString("en-IN", { month: "short" }));
+    current.push(0);
+    previous.push(0);
+  }
 
   return {
     period,
-    months: allMonths.slice(start, end),
-    current: allCurrent.slice(start, end),
-    previous: allPrevious.slice(start, end),
+    months,
+    current,
+    previous,
   };
 }
 
@@ -213,6 +201,13 @@ function buildFallbackRevenue(period: RevenuePeriod): RevenueChartData {
  */
 function deriveSegments(committedSpent: number): BudgetSegment[] {
   const inLakhs = (n: number) => Math.round(n / 1_000) / 100;
+  if (committedSpent <= 0) {
+    return [
+      { name: "Operations", amountInLakhs: 0, percent: 0 },
+      { name: "Payroll", amountInLakhs: 0, percent: 0 },
+      { name: "Infra & SaaS", amountInLakhs: 0, percent: 0 },
+    ];
+  }
   return [
     { name: "Operations", amountInLakhs: inLakhs(committedSpent * 0.497), percent: 49.7 },
     { name: "Payroll", amountInLakhs: inLakhs(committedSpent * 0.331), percent: 33.1 },

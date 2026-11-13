@@ -61,7 +61,8 @@ router.post(
 
 /**
  * GET /api/projects/:id
- * Admin can view any project; employee/client access restricted (future: by assignment).
+ * Admin can view any project; employee/client access is scoped to projects
+ * they are assigned to via a signed contract.
  */
 router.get(
   "/:id",

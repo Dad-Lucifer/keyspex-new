@@ -57,6 +57,12 @@ export const createUserSchema = z
       .max(200)
       .optional()
       .or(z.literal("")),
+    jobTitle: z
+      .string()
+      .trim()
+      .max(80, "Job title must be at most 80 characters.")
+      .optional()
+      .or(z.literal("")),
   })
   .strict();
 
@@ -78,6 +84,12 @@ export const updateUserSchema = z
       .string()
       .trim()
       .max(200)
+      .optional()
+      .or(z.literal("")),
+    jobTitle: z
+      .string()
+      .trim()
+      .max(80, "Job title must be at most 80 characters.")
       .optional()
       .or(z.literal("")),
   })

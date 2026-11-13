@@ -49,6 +49,7 @@ export async function createUser(
     active: true,
     ...(input.contactEmail ? { contactEmail: input.contactEmail } : {}),
     ...(input.portfolioUrl ? { portfolioUrl: input.portfolioUrl } : {}),
+    ...(input.jobTitle ? { jobTitle: input.jobTitle } : {}),
   };
 
   await db.collection("users").doc(firebaseUser.uid).set(userRecord);
@@ -83,6 +84,7 @@ export async function listUsers(
       contactNo: data.contactNo,
       contactEmail: data.contactEmail,
       portfolioUrl: data.portfolioUrl,
+      jobTitle: data.jobTitle,
     };
   });
 }
@@ -125,6 +127,7 @@ export async function updateUser(
   if (input.contactNo !== undefined) firestoreUpdate.contactNo = input.contactNo;
   if (input.contactEmail !== undefined) firestoreUpdate.contactEmail = input.contactEmail;
   if (input.portfolioUrl !== undefined) firestoreUpdate.portfolioUrl = input.portfolioUrl;
+  if (input.jobTitle !== undefined) firestoreUpdate.jobTitle = input.jobTitle;
 
   const authUpdate: UpdateRequest = {};
   if (input.displayName) authUpdate.displayName = input.displayName;

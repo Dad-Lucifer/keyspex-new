@@ -36,13 +36,19 @@ export function PayrollManagementView({
   currency,
   onBackToDashboard,
 }: PayrollManagementViewProps) {
+  // Current month/year helper
+  const currentMonthYear = new Date().toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+  });
+
   // Employees list for selection
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [selectedUid, setSelectedUid] = useState<string>("");
 
   // Form state
   const [amount, setAmount] = useState<string>("");
-  const [period, setPeriod] = useState<string>("November 2024");
+  const [period, setPeriod] = useState<string>(currentMonthYear);
   const [paymentMethod, setPaymentMethod] = useState<string>(
     "Direct Bank Transfer (NEFT/ACH)"
   );
@@ -58,83 +64,6 @@ export function PayrollManagementView({
   const [search, setSearch] = useState<string>("");
 
   const currencySymbol = currency === "INR" ? "₹" : currency === "USD" ? "$" : "€";
-
-  // Fallback demo employees if API is empty or offline
-  const defaultDemoEmployees: EmployeeOption[] = [
-    {
-      uid: "emp-1001",
-      displayName: "Riya Sharma",
-      email: "riya.sharma@brand.com",
-      contactNo: "+91 98765 43210",
-    },
-    {
-      uid: "emp-1002",
-      displayName: "Marcus Vance",
-      email: "marcus.vance@brand.com",
-      contactNo: "+91 98765 43211",
-    },
-    {
-      uid: "emp-1003",
-      displayName: "Priya Nair",
-      email: "priya.nair@brand.com",
-      contactNo: "+91 98765 43212",
-    },
-    {
-      uid: "emp-1004",
-      displayName: "Rahul Verma",
-      email: "rahul.verma@brand.com",
-      contactNo: "+91 98765 43213",
-    },
-    {
-      uid: "emp-1005",
-      displayName: "Aarav Patel",
-      email: "aarav.patel@brand.com",
-      contactNo: "+91 98765 43214",
-    },
-  ];
-
-  // Fallback demo salaries
-  const defaultDemoSalaries: SalaryItem[] = [
-    {
-      id: "sal-101",
-      employeeUid: "emp-1001",
-      employeeName: "Riya Sharma",
-      employeeEmail: "riya.sharma@brand.com",
-      amount: 45000,
-      period: "October 2024",
-      paymentMethod: "Direct Bank Transfer (NEFT/ACH)",
-      notes: "Monthly regular disbursement",
-      status: "paid",
-      paidAt: { _seconds: Math.floor(Date.now() / 1000) - 86400 * 5, _nanoseconds: 0 },
-      paidByName: "Admin",
-    },
-    {
-      id: "sal-102",
-      employeeUid: "emp-1002",
-      employeeName: "Marcus Vance",
-      employeeEmail: "marcus.vance@brand.com",
-      amount: 65000,
-      period: "October 2024",
-      paymentMethod: "Direct Bank Transfer (NEFT/ACH)",
-      notes: "Senior Engineering Retainer",
-      status: "paid",
-      paidAt: { _seconds: Math.floor(Date.now() / 1000) - 86400 * 5, _nanoseconds: 0 },
-      paidByName: "Admin",
-    },
-    {
-      id: "sal-103",
-      employeeUid: "emp-1003",
-      employeeName: "Priya Nair",
-      employeeEmail: "priya.nair@brand.com",
-      amount: 52000,
-      period: "October 2024",
-      paymentMethod: "UPI Instant Settlement",
-      notes: "Product Design Retainer",
-      status: "paid",
-      paidAt: { _seconds: Math.floor(Date.now() / 1000) - 86400 * 6, _nanoseconds: 0 },
-      paidByName: "Admin",
-    },
-  ];
 
   // 1. Fetch live employee roster
   const loadEmployees = async () => {
@@ -158,12 +87,10 @@ export function PayrollManagementView({
         setEmployees(json.data.users);
         if (!selectedUid) setSelectedUid(json.data.users[0].uid);
       } else {
-        setEmployees(defaultDemoEmployees);
-        if (!selectedUid) setSelectedUid(defaultDemoEmployees[0].uid);
+        setEmployees([]);
       }
     } catch {
-      setEmployees(defaultDemoEmployees);
-      if (!selectedUid) setSelectedUid(defaultDemoEmployees[0].uid);
+      setEmployees([]);
     }
   };
 
@@ -175,10 +102,10 @@ export function PayrollManagementView({
       if (data && data.length > 0) {
         setSalaries(data);
       } else {
-        setSalaries(defaultDemoSalaries);
+        setSalaries([]);
       }
     } catch {
-      setSalaries(defaultDemoSalaries);
+      setSalaries([]);
     } finally {
       setLoadingHistory(false);
     }
@@ -218,7 +145,7 @@ export function PayrollManagementView({
         employeeName: selectedEmployee.displayName,
         employeeEmail: selectedEmployee.email,
         amount: numericAmount,
-        period: period.trim() || "November 2024",
+        period: period.trim() || currentMonthYear,
         paymentMethod,
         notes: notes.trim() || undefined,
       });
@@ -240,7 +167,7 @@ export function PayrollManagementView({
           employeeName: selectedEmployee.displayName,
           employeeEmail: selectedEmployee.email,
           amount: numericAmount,
-          period: period.trim() || "November 2024",
+          period: period.trim() || currentMonthYear,
           paymentMethod,
           notes: notes.trim() || undefined,
           status: "paid",
@@ -489,11 +416,15 @@ export function PayrollManagementView({
                 required
                 className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2.5 text-xs text-[#0f172a] font-medium outline-none focus:border-[#2563eb] focus:bg-white focus:ring-2 focus:ring-blue-500/10 cursor-pointer"
               >
-                {employees.map((emp) => (
-                  <option key={emp.uid} value={emp.uid}>
-                    {emp.displayName} — {emp.email}
-                  </option>
-                ))}
+                {employees.length === 0 ? (
+                  <option value="">No employees available</option>
+                ) : (
+                  employees.map((emp) => (
+                    <option key={emp.uid} value={emp.uid}>
+                      {emp.displayName} — {emp.email}
+                    </option>
+                  ))
+                )}
               </select>
 
               {/* Employee Quick Info Badge */}

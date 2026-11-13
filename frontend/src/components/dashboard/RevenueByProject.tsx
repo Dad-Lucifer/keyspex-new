@@ -8,45 +8,19 @@ interface RevenueByProjectProps {
   currency: "INR" | "USD" | "EUR";
 }
 
-const DEFAULT_PROJECTS = [
-  {
-    rank: 1,
-    title: "Enterprise Cloud Migration",
-    code: "PRJ-3001",
-    amount: 340000,
-    share: 40.2,
-    activeColor: "bg-[#2563eb]",
-  },
-  {
-    rank: 2,
-    title: "Fintech Core Banking UI",
-    code: "PRJ-3002",
-    amount: 210000,
-    share: 24.8,
-    activeColor: "bg-[#3b82f6]",
-  },
-  {
-    rank: 3,
-    title: "HealthTech Telehealth App",
-    code: "PRJ-3003",
-    amount: 165000,
-    share: 19.5,
-    activeColor: "bg-[#60a5fa]",
-  },
-  {
-    rank: 4,
-    title: "Retail POS Modernization",
-    code: "PRJ-3004",
-    amount: 130000,
-    share: 15.5,
-    activeColor: "bg-[#93c5fd]",
-  },
-];
+interface DisplayProjectRevenue {
+  rank: number;
+  title: string;
+  code: string;
+  amount: number;
+  share: number;
+  activeColor: string;
+}
 
 const COLOR_STEPS = ["bg-[#2563eb]", "bg-[#3b82f6]", "bg-[#60a5fa]", "bg-[#93c5fd]"];
 
 export function RevenueByProject({ currency }: RevenueByProjectProps) {
-  const [projectList, setProjectList] = useState(DEFAULT_PROJECTS);
+  const [projectList, setProjectList] = useState<DisplayProjectRevenue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -63,10 +37,12 @@ export function RevenueByProject({ currency }: RevenueByProjectProps) {
             activeColor: COLOR_STEPS[idx % COLOR_STEPS.length],
           }));
           setProjectList(mapped);
+        } else if (isMounted) {
+          setProjectList([]);
         }
       })
       .catch(() => {
-        // Fallback to default demo data
+        if (isMounted) setProjectList([]);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -111,42 +87,48 @@ export function RevenueByProject({ currency }: RevenueByProjectProps) {
       </div>
 
       {/* Projects List */}
-      <div className="my-3 space-y-4">
-        {projectList.map((proj) => (
-          <div key={proj.code} className="group">
-            <div className="flex items-center justify-between mb-1.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#eff6ff] font-mono text-[10px] font-bold text-[#2563eb]">
-                  {proj.rank}
-                </span>
-                <span className="font-semibold text-[#0f172a] group-hover:text-[#2563eb] transition-colors">
-                  {proj.title}
-                </span>
-                <span className="font-mono text-[10px] text-[#94a3b8]">
-                  {proj.code}
-                </span>
+      {projectList.length === 0 && !isLoading ? (
+        <div className="my-6 py-6 text-center text-xs text-[#94a3b8] rounded-xl border border-dashed border-[#e2e8f0]">
+          No active projects found
+        </div>
+      ) : (
+        <div className="my-3 space-y-4">
+          {projectList.map((proj) => (
+            <div key={proj.code} className="group">
+              <div className="flex items-center justify-between mb-1.5 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#eff6ff] font-mono text-[10px] font-bold text-[#2563eb]">
+                    {proj.rank}
+                  </span>
+                  <span className="font-semibold text-[#0f172a] group-hover:text-[#2563eb] transition-colors">
+                    {proj.title}
+                  </span>
+                  <span className="font-mono text-[10px] text-[#94a3b8]">
+                    {proj.code}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 font-mono">
+                  <span className="font-bold text-[#0f172a]">
+                    {formatMoney(proj.amount)}
+                  </span>
+                  <span className="text-[11px] text-[#64748b] w-12 text-right">
+                    {proj.share}%
+                  </span>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 font-mono">
-                <span className="font-bold text-[#0f172a]">
-                  {formatMoney(proj.amount)}
-                </span>
-                <span className="text-[11px] text-[#64748b] w-12 text-right">
-                  {proj.share}%
-                </span>
+              {/* Progress Share Bar */}
+              <div className="h-1.5 w-full rounded-full bg-[#f1f5f9] overflow-hidden">
+                <div
+                  className={`h-full rounded-full ${proj.activeColor} transition-all duration-700 ease-out`}
+                  style={{ width: `${Math.min(100, Math.max(0, proj.share))}%` }}
+                />
               </div>
             </div>
-
-            {/* Progress Share Bar */}
-            <div className="h-1.5 w-full rounded-full bg-[#f1f5f9] overflow-hidden">
-              <div
-                className={`h-full rounded-full ${proj.activeColor} transition-all duration-700 ease-out`}
-                style={{ width: `${Math.min(100, Math.max(0, proj.share))}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

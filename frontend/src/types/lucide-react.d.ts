@@ -72,6 +72,26 @@ declare module 'lucide-react' {
   export const ShieldCheck: LucideIcon;
   export const CheckCircle2: LucideIcon;
   export const Loader2: LucideIcon;
+  export const AlertTriangle: LucideIcon;
+  export const Printer: LucideIcon;
+  export const Send: LucideIcon;
+  export const FileCheck: LucideIcon;
+  export const PenTool: LucideIcon;
+  export const Copy: LucideIcon;
+  export const BadgeCheck: LucideIcon;
+  export const FileSignature: LucideIcon;
+  export const Kanban: LucideIcon;
+  export const LayoutGrid: LucideIcon;
+  export const List: LucideIcon;
+  export const Flag: LucideIcon;
+  export const Tag: LucideIcon;
+  export const User: LucideIcon;
+  export const SlidersHorizontal: LucideIcon;
+  export const ArrowDownLeft: LucideIcon;
+  export const ArrowDownRight: LucideIcon;
+  export const Receipt: LucideIcon;
+  export const Coins: LucideIcon;
+  export const Percent: LucideIcon;
 
   const icons: { [key: string]: LucideIcon };
   export default icons;

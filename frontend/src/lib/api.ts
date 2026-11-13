@@ -153,6 +153,7 @@ export interface ProjectItem {
   id: string;
   code: string;
   title: string;
+  description?: string;
   clientId: string;
   clientName: string;
   amount: number;
@@ -160,6 +161,23 @@ export interface ProjectItem {
   status: "on-track" | "near-deadline" | "at-risk" | "completed" | "paused";
   startDate: string;
   endDate: string;
+  assignedTo?: string[];
+  assignedNames?: string[];
+}
+
+export interface CreateProjectInput {
+  title: string;
+  description?: string;
+  amount: number;
+  endDate: string; // deadline
+  startDate?: string;
+  code?: string;
+  clientId?: string;
+  clientName?: string;
+  status?: "on-track" | "near-deadline" | "at-risk" | "completed" | "paused";
+  sharePercent?: number;
+  assignedTo?: string[];
+  assignedNames?: string[];
 }
 
 export interface ObligationItem {
@@ -227,6 +245,75 @@ export interface CreateSalaryInput {
   notes?: string;
 }
 
+export interface DigitalSignatureInfo {
+  signatoryName: string;
+  signatoryRole: string;
+  signedDate: string;
+  certHash: string;
+  status: "Verified" | "Signed" | "Pending";
+}
+
+export interface ContractItem {
+  id: string;
+  title: string;
+  agreementType: string;
+  companyName: string;
+  companyAddress: string;
+  companyCin: string;
+  contractDate: string;
+
+  // Employee (Party 2)
+  employeeUid: string;
+  employeeName: string;
+  employeeEmail: string;
+  employeeRole: string;
+  employeePhone: string;
+
+  // Project Details
+  projectCode: string;
+  projectTitle: string;
+  clientName: string;
+  remuneration: number;
+  paymentTerms: string;
+  startDate: string;
+  endDate: string;
+
+  // Clauses
+  scopeDetails: string;
+  compensationClause: string;
+  ndaClause: string;
+
+  // Digital Signatures
+  party1Admin: DigitalSignatureInfo;
+  party2Employee: DigitalSignatureInfo;
+
+  status: "draft" | "sent" | "signed" | "revoked";
+  verificationTimestamp: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface CreateContractInput {
+  title: string;
+  agreementType?: string;
+  employeeUid: string;
+  employeeName: string;
+  employeeEmail: string;
+  employeeRole: string;
+  employeePhone?: string;
+  projectCode: string;
+  projectTitle: string;
+  clientName?: string;
+  remuneration: number;
+  paymentTerms?: string;
+  startDate: string;
+  endDate: string;
+  scopeDetails?: string;
+  compensationClause?: string;
+  ndaClause?: string;
+  status?: "draft" | "sent" | "signed" | "revoked";
+}
+
 // ── API Methods ────────────────────────────────────────────────────────────
 
 export async function getDashboardMetrics(): Promise<DashboardMetrics> {
@@ -260,6 +347,64 @@ export async function getProjects(top?: number): Promise<ProjectItem[]> {
   return json.data.projects;
 }
 
+export async function createProject(
+  data: CreateProjectInput
+): Promise<{ success: boolean; data: { project: ProjectItem } }> {
+  return await fetchWithAuth<{ success: boolean; data: { project: ProjectItem } }>(
+    "/api/projects",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteProject(
+  id: string
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/projects/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+export async function updateProject(
+  id: string,
+  data: Partial<CreateProjectInput>
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/projects/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export interface CreateEventInput {
+  date: string; // YYYY-MM-DD
+  title: string;
+  time: string; // e.g. "10:30 AM"
+  context: string;
+  tag:
+    | "Project Deadline"
+    | "Operations"
+    | "Financial"
+    | "Client Meeting"
+    | "HR"
+    | "Review";
+}
+
+export interface CreateObligationInput {
+  dueDate: string; // YYYY-MM-DD
+  title: string;
+  account: string;
+  amount: number;
+  status: "overdue" | "scheduled" | "pending-auth" | "paid";
+}
+
 export async function getObligations(next14days = false): Promise<ObligationItem[]> {
   const query = next14days ? "?next14days=true" : "";
   const json = await fetchWithAuth<{ success: boolean; data: { obligations: ObligationItem[] } }>(
@@ -268,12 +413,84 @@ export async function getObligations(next14days = false): Promise<ObligationItem
   return json.data.obligations;
 }
 
+export async function createObligation(
+  data: CreateObligationInput
+): Promise<{ success: boolean; data: { obligation: ObligationItem } }> {
+  return await fetchWithAuth<{ success: boolean; data: { obligation: ObligationItem } }>(
+    "/api/obligations",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function updateObligation(
+  id: string,
+  data: Partial<CreateObligationInput>
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/obligations/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteObligation(
+  id: string
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/obligations/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
 export async function getCalendarEvents(upcoming = true): Promise<CalendarEventItem[]> {
   const query = upcoming ? "?upcoming=true" : "?upcoming=false";
   const json = await fetchWithAuth<{ success: boolean; data: { events: CalendarEventItem[] } }>(
     `/api/events${query}`
   );
   return json.data.events;
+}
+
+export async function createCalendarEvent(
+  data: CreateEventInput
+): Promise<{ success: boolean; data: { event: CalendarEventItem } }> {
+  return await fetchWithAuth<{ success: boolean; data: { event: CalendarEventItem } }>(
+    "/api/events",
+    {
+      method: "POST",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function updateCalendarEvent(
+  id: string,
+  data: Partial<CreateEventInput>
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/events/${id}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    }
+  );
+}
+
+export async function deleteCalendarEvent(
+  id: string
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/events/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
 }
 
 export async function getAuditLog(limit = 10): Promise<AuditLogItem[]> {
@@ -307,4 +524,290 @@ export async function disburseSalary(
     salary: json.data.salary,
   };
 }
+
+// ── Contract API Methods ──────────────────────────────────────────────────
+
+export async function getContracts(
+  employeeUid?: string,
+  status?: string
+): Promise<ContractItem[]> {
+  const params = new URLSearchParams();
+  if (employeeUid) params.set("employeeUid", employeeUid);
+  if (status) params.set("status", status);
+  const q = params.toString() ? `?${params.toString()}` : "";
+  const json = await fetchWithAuth<{ success: boolean; data: { contracts: ContractItem[] } }>(
+    `/api/contracts${q}`
+  );
+  return json.data.contracts;
+}
+
+export async function getContractById(id: string): Promise<ContractItem> {
+  const json = await fetchWithAuth<{ success: boolean; data: { contract: ContractItem } }>(
+    `/api/contracts/${id}`
+  );
+  return json.data.contract;
+}
+
+export async function createContract(
+  data: CreateContractInput
+): Promise<{ success: boolean; message: string; data: { contract: ContractItem } }> {
+  return await fetchWithAuth<{
+    success: boolean;
+    message: string;
+    data: { contract: ContractItem };
+  }>("/api/contracts", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateContractStatus(
+  id: string,
+  status: "draft" | "sent" | "signed" | "revoked"
+): Promise<{ success: boolean; message: string; data: { contract: ContractItem } }> {
+  return await fetchWithAuth<{
+    success: boolean;
+    message: string;
+    data: { contract: ContractItem };
+  }>(`/api/contracts/${id}/status`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function deleteContract(
+  id: string
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/contracts/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+// ── Tasks ────────────────────────────────────────────────────────────────────
+
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+export type TaskStatus = "todo" | "in-progress" | "review" | "completed";
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string; // YYYY-MM-DD
+  assignedTo: string; // employee uid
+  assignedEmployeeName: string;
+  assignedEmployeeEmail?: string;
+  assignedEmployeeRole?: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: { _seconds?: number; seconds?: number; [key: string]: unknown } | string;
+  updatedAt?: { _seconds?: number; seconds?: number; [key: string]: unknown } | string;
+}
+
+export interface CreateTaskInput {
+  title: string;
+  description?: string;
+  dueDate: string;
+  assignedTo: string;
+  assignedEmployeeName: string;
+  assignedEmployeeEmail?: string;
+  assignedEmployeeRole?: string;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+}
+
+export interface UpdateTaskInput {
+  title?: string;
+  description?: string;
+  dueDate?: string;
+  assignedTo?: string;
+  assignedEmployeeName?: string;
+  assignedEmployeeEmail?: string;
+  assignedEmployeeRole?: string;
+  priority?: TaskPriority;
+  status?: TaskStatus;
+}
+
+export async function getTasks(filters?: {
+  status?: string;
+  priority?: string;
+  assignedTo?: string;
+}): Promise<TaskItem[]> {
+  const params = new URLSearchParams();
+  if (filters?.status && filters.status !== "all") params.set("status", filters.status);
+  if (filters?.priority && filters.priority !== "all") params.set("priority", filters.priority);
+  if (filters?.assignedTo && filters.assignedTo !== "all") params.set("assignedTo", filters.assignedTo);
+  const q = params.toString() ? `?${params.toString()}` : "";
+  const json = await fetchWithAuth<{ success: boolean; data: { tasks: TaskItem[] } }>(
+    `/api/tasks${q}`
+  );
+  return json.data.tasks;
+}
+
+export async function getTaskById(id: string): Promise<TaskItem> {
+  const json = await fetchWithAuth<{ success: boolean; data: { task: TaskItem } }>(
+    `/api/tasks/${id}`
+  );
+  return json.data.task;
+}
+
+export async function createTask(
+  data: CreateTaskInput
+): Promise<{ success: boolean; message: string; data: { task: TaskItem } }> {
+  return await fetchWithAuth<{
+    success: boolean;
+    message: string;
+    data: { task: TaskItem };
+  }>("/api/tasks", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateTask(
+  id: string,
+  data: UpdateTaskInput
+): Promise<{ success: boolean; message: string; data: { task: TaskItem } }> {
+  return await fetchWithAuth<{
+    success: boolean;
+    message: string;
+    data: { task: TaskItem };
+  }>(`/api/tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateTaskStatus(
+  id: string,
+  status: TaskStatus
+): Promise<{ success: boolean; message: string; data: { task: TaskItem } }> {
+  return await fetchWithAuth<{
+    success: boolean;
+    message: string;
+    data: { task: TaskItem };
+  }>(`/api/tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function deleteTask(
+  id: string
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/tasks/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+// ── Payment Timeline ─────────────────────────────────────────────────────────
+
+export type PaymentEntryType = "received" | "invested";
+export type PaymentEntryStatus = "cleared" | "pending" | "reconciled";
+
+export interface PaymentTimelineItem {
+  id: string;
+  projectId: string;
+  projectCode: string;
+  projectTitle: string;
+  clientName: string;
+  type: PaymentEntryType;
+  amount: number;
+  date: string;
+  title: string;
+  notes?: string;
+  method?: string;
+  referenceNo?: string;
+  status: PaymentEntryStatus;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+export interface CreatePaymentEntryInput {
+  projectId: string;
+  projectCode?: string;
+  projectTitle: string;
+  clientName?: string;
+  type: PaymentEntryType;
+  amount: number;
+  date: string;
+  title: string;
+  notes?: string;
+  method?: string;
+  referenceNo?: string;
+  status?: PaymentEntryStatus;
+}
+
+export interface ProjectPaymentSummary {
+  projectId: string;
+  projectCode: string;
+  projectTitle: string;
+  clientName: string;
+  budget: number;
+  totalReceived: number;
+  totalInvested: number;
+  netBalance: number;
+  remainingBudget: number;
+  collectionPercent: number;
+  entriesCount: number;
+}
+
+export async function getPaymentEntries(filters?: {
+  projectId?: string;
+  type?: string;
+}): Promise<PaymentTimelineItem[]> {
+  const params = new URLSearchParams();
+  if (filters?.projectId) params.set("projectId", filters.projectId);
+  if (filters?.type && filters.type !== "all") params.set("type", filters.type);
+  const q = params.toString() ? `?${params.toString()}` : "";
+  const json = await fetchWithAuth<{ success: boolean; data: { entries: PaymentTimelineItem[] } }>(
+    `/api/payment-timeline/entries${q}`
+  );
+  return json.data.entries;
+}
+
+export async function createPaymentEntry(
+  data: CreatePaymentEntryInput
+): Promise<{ success: boolean; message: string; data: { entry: PaymentTimelineItem } }> {
+  return await fetchWithAuth<{
+    success: boolean;
+    message: string;
+    data: { entry: PaymentTimelineItem };
+  }>("/api/payment-timeline/entries", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deletePaymentEntry(
+  id: string
+): Promise<{ success: boolean; message: string }> {
+  return await fetchWithAuth<{ success: boolean; message: string }>(
+    `/api/payment-timeline/entries/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
+}
+
+export async function getProjectPaymentSummary(
+  projectId: string
+): Promise<ProjectPaymentSummary> {
+  const json = await fetchWithAuth<{
+    success: boolean;
+    data: { summary: ProjectPaymentSummary };
+  }>(`/api/payment-timeline/summary/${projectId}`);
+  return json.data.summary;
+}
+
+
 

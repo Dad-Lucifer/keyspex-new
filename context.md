@@ -110,28 +110,32 @@ backend/src/
 │   ├── event.routes.ts       ← /api/events CRUD (admin only)
 │   ├── audit.routes.ts       ← /api/audit-log GET (admin only)
 │   ├── inquiry.routes.ts     ← /api/inquiries POST (public, rate-limited) & GET (admin only)
-│   └── payroll.routes.ts     ← /api/payroll POST disburse & GET ledger/summary (admin only)
+│   ├── payroll.routes.ts     ← /api/payroll POST disburse & GET ledger/summary (admin only)
+│   └── contract.routes.ts    ← /api/contracts CRUD & /:id/status (admin + employee access)
 ├── schemas/
 │   ├── auth.schema.ts        ← `loginSchema` (email, password ≥8 chars)
-│   ├── user.schema.ts        ← `createUserSchema` (strict, contactNo required), `updateUserSchema`
-│   ├── project.schema.ts     ← `createProjectSchema`, `updateProjectSchema`
+│   ├── user.schema.ts        ← `createUserSchema` (strict, contactNo required, jobTitle optional), `updateUserSchema`
+│   ├── project.schema.ts     ← `createProjectSchema`, `updateProjectSchema` (contract-driven; assignedTo/assignedNames stripped)
 │   ├── obligation.schema.ts  ← `createObligationSchema`, `updateObligationSchema`
 │   ├── event.schema.ts       ← `createEventSchema`, `updateEventSchema`
 │   ├── inquiry.schema.ts     ← `createInquirySchema` (name, email, phone, service, message)
-│   └── payroll.schema.ts     ← `createSalaryPaymentSchema` (employeeUid, name, email, amount, period)
+│   ├── payroll.schema.ts     ← `createSalaryPaymentSchema` (employeeUid, name, email, amount, period)
+│   └── contract.schema.ts    ← `createContractSchema`, `updateContractStatusSchema`
 ├── services/
 │   ├── auth.service.ts       ← `loginUser`, `refreshTokens`, `logoutUser`
-│   ├── user.service.ts       ← `createUser`, `listUsers`, `getUserById`, `updateUser`, `deleteUser`
+│   ├── user.service.ts       ← `createUser`, `listUsers`, `getUserById`, `updateUser`, `deleteUser` (persists jobTitle)
 │   ├── dashboard.service.ts  ← `getDashboardMetrics`, `getRevenueData`, `getBudgetData`
-│   ├── project.service.ts    ← `listProjects`, `getProjectById`, `createProject`, `updateProject`, `deleteProject`
+│   ├── project.service.ts    ← `listProjects`, `getProjectById`, `createProject`, `updateProject`, `deleteProject` (contract-driven assignments)
 │   ├── obligation.service.ts ← `listObligations`, `getObligationById`, `createObligation`, `updateObligation`, `deleteObligation`
 │   ├── event.service.ts      ← `listEvents`, `getEventById`, `createEvent`, `updateEvent`, `deleteEvent`
 │   ├── auditLog.service.ts   ← `logAction`, `getRecentActivity`
 │   ├── inquiry.service.ts    ← `createInquiry`, `listInquiries`
-│   └── payroll.service.ts    ← `disburseSalary`, `listSalaries`, `getPayrollSummary`
+│   ├── payroll.service.ts    ← `disburseSalary`, `listSalaries`, `getPayrollSummary`
+│   └── contract.service.ts   ← `createContract`, `listContracts`, `getContractById`, `updateContractStatus` (auto-syncs project roster on sign/revoke)
 ├── types/
-│   ├── index.ts              ← `UserRole`, `UserRecord`, `JwtPayload`, `AuthTokens`
-│   └── dashboard.ts          ← All dashboard types (metrics, project, obligation, event, audit log)
+│   ├── index.ts              ← `UserRole`, `UserRecord` (incl. jobTitle), `JwtPayload`, `AuthTokens`
+│   ├── dashboard.ts          ← All dashboard types (metrics, project, obligation, event, audit log)
+│   └── contract.ts           ← `ContractRecord`, `ContractStatus`, `ContractSignatory`
 └── utils/
     ├── error.ts          ← `AppError` class (statusCode, message, code)
     ├── jwt.ts            ← `signAccessToken`, `signRefreshToken`, `verifyAccessToken`, `verifyRefreshToken`
@@ -211,6 +215,7 @@ interface UserRecord {
   contactNo: string;     // REQUIRED: 7-20 chars, 7-15 digits
   contactEmail?: string; // optional secondary/personal email
   portfolioUrl?: string; // optional portfolio/website URL
+  jobTitle?: string;     // optional designation (e.g. "Full Stack Developer", "UI/UX Designer")
   createdBy?: string;    // uid of admin who created this user (not set for super-admin)
   createdAt: Timestamp;
   updatedAt: Timestamp;
@@ -330,8 +335,10 @@ frontend/src/
 │   │   ├── UpcomingObligations.tsx  ← Imminent payouts & disbursements list
 │   │   ├── RecentActivity.tsx       ← Live audit log table (actors, actions, timestamps, badges)
 │   │   ├── UpcomingEvents.tsx       ← Calendar reviews, client syncs & deadlines
-│   │   ├── CreateUserModal.tsx      ← Modal dialog for creating employee/client via POST /api/users
+│   │   ├── CreateUserModal.tsx      ← Modal dialog for creating employee/client (jobTitle presets & custom entry)
 │   │   ├── UserManagementView.tsx   ← Live directory view for employees/clients (toggle active, delete)
+│   │   ├── ProjectManagementView.tsx ← Project creation & directory (contract-driven signed engineer tracking)
+│   │   ├── ContractManagementView.tsx ← Legal deed issuance & digital signing (binds employees & designations to projects)
 │   │   └── PayrollManagementView.tsx ← Full interactive salary payout console (employee select, amount, disburse)
 │   ├── hero/
 │   │   ├── Hero.tsx                 ← Hero wrapper (HeroVisualStage + HeroStatement + HeroTicker)
@@ -455,7 +462,7 @@ The Admin Dashboard provides an executive command center ("Enterprise OS") desig
 8. **Live User Directory & Creation**:
    - Clicking `Employees` or `Clients` in the sidebar renders `UserManagementView.tsx`, fetching real accounts from `GET /api/users?role=...`.
    - Allows toggling account status (`active: boolean`) via `PATCH /api/users/:uid` and deleting accounts via `DELETE /api/users/:uid`.
-   - `+ Create New` button opens `CreateUserModal.tsx`, validating and dispatching to `POST /api/users`.
+   - `+ Create New` button opens `CreateUserModal.tsx`, validating and dispatching to `POST /api/users`. Supports defining `jobTitle` for employees using 12 preset chips (e.g., Full Stack Developer, Frontend Developer, Backend Developer, UI/UX Designer, DevOps Engineer, etc.) or custom entry.
 9. **Financial Export**:
    - "Export Report" button generates and downloads a clean CSV summary of current financial performance and project shares.
 10. **Payroll & Salaries Console (`PayrollManagementView.tsx`)**:
@@ -463,6 +470,16 @@ The Admin Dashboard provides an executive command center ("Enterprise OS") desig
    - Allows selecting active staff from `GET /api/users?role=employee`, entering salary with quick preset chips, pay period, and payment method.
    - Authorizes single-click payout disbursement stored in Firestore `salaries` collection and writes to enterprise `auditLog`.
    - Displays real-time ledger table with search filtering and CSV ledger export.
+11. **Project Management Console (`ProjectManagementView.tsx`)**:
+   - Live connected to `GET /api/projects`, `POST /api/projects`, `PATCH /api/projects/:id`, and `DELETE /api/projects/:id`.
+   - Decoupled from manual team assignment: projects are created with pure delivery scope, client association, budget, and deadline (`assignedTo: []`).
+   - "Signed Engineers" column is strictly read-only: displays staff members who have legally joined the project by signing their respective contracts (with `FileSignature` badges).
+   - Prevents arbitrary project staff assignments via the UI or direct PATCH calls.
+12. **Contracts & Documents Console (`ContractManagementView.tsx`)**:
+   - Live connected to `GET /api/contracts`, `POST /api/contracts`, `PATCH /api/contracts/:id/status`, and `DELETE /api/contracts/:id`.
+   - Admin generates IT Act compliant project assignment deeds with company metadata, milestone remuneration, NDA clauses, and SHA-256 cert hashes.
+   - Automatically adopts the employee's configured `jobTitle` from `GET /api/users?role=employee` as the signatory designation.
+   - **Contract-driven Project Assignment**: When a contract is signed (`status: "signed"`), the backend automatically links the employee into the project's `assignedTo` and `assignedNames` arrays. Reverting contract status automatically unbinds the employee from the project roster. Employees can join 1 or multiple projects simultaneously.
 
 ### Content Layer (`src/content/site.ts`)
 
@@ -653,12 +670,17 @@ Response (200):
   "email": "new@example.com",
   "password": "Min8chars1A",
   "displayName": "John Doe",
-  "role": "employee"
+  "contactNo": "+91 98765 43210",
+  "role": "employee",
+  "jobTitle": "Full Stack Developer",
+  "contactEmail": "john.personal@example.com",
+  "portfolioUrl": "https://johndoe.dev"
 }
 ```
 
 #### `GET /api/users` (admin only)
 Optional query: `?role=employee` or `?role=client`
+Returns user records including `jobTitle`, `contactNo`, etc.
 
 #### `GET /api/users/:uid`
 Admin: any user. Non-admin: own uid only.
@@ -668,6 +690,8 @@ Admin: any user. Non-admin: own uid only.
 {
   "displayName": "New Name",
   "password": "NewPass1A",
+  "contactNo": "+91 98765 43210",
+  "jobTitle": "Lead Full Stack Developer",
   "active": false
 }
 ```
@@ -750,9 +774,9 @@ Budget utilization donut data.
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/projects` | List all projects (optional `?top=N`) |
-| `POST` | `/api/projects` | Create project |
+| `POST` | `/api/projects` | Create project (starts unassigned; assignedTo/assignedNames initialized to `[]`) |
 | `GET` | `/api/projects/:id` | Get project by Firestore doc ID |
-| `PATCH` | `/api/projects/:id` | Update project fields |
+| `PATCH` | `/api/projects/:id` | Update project fields (assignedTo/assignedNames stripped; managed via contracts) |
 | `DELETE` | `/api/projects/:id` | Delete project |
 
 **`POST /api/projects` body:**
@@ -760,6 +784,7 @@ Budget utilization donut data.
 {
   "code": "PRJ-3005",
   "title": "New Project",
+  "description": "Project specifications and milestone deliverables...",
   "clientId": "CLI-2001",
   "clientName": "Apex Global",
   "amount": 150000,
@@ -770,6 +795,7 @@ Budget utilization donut data.
 }
 ```
 `status` values: `"on-track" | "near-deadline" | "at-risk" | "completed" | "paused"`
+*(Note: `assignedTo` and `assignedNames` are intentionally excluded from manual API creation and update payloads. Staff join automatically when they sign their project contract.)*
 
 ---
 
@@ -905,6 +931,50 @@ Returns payroll aggregates: `totalDisbursed`, `disbursementsCount`, `averageSala
 
 ---
 
+### Contract & Agreement Endpoints
+
+| Method | Path | Access | Description |
+|---|---|---|---|
+| `GET` | `/api/contracts` | admin / employee | List all contracts (admin) or personal contracts (employee). Optional `?status=...&employeeUid=...` |
+| `POST` | `/api/contracts` | admin | Generate & issue legal assignment deed to employee |
+| `GET` | `/api/contracts/:id` | admin / employee (self) | Fetch contract details with IT Act digital cert hashes |
+| `PATCH` | `/api/contracts/:id/status` | admin / employee (self) | Update status (`"sent" \| "signed"`). **Auto-syncs project roster**: signing attaches employee to project; revoking removes employee |
+| `DELETE` | `/api/contracts/:id` | admin | Delete contract agreement from system |
+
+#### `POST /api/contracts` body:
+```json
+{
+  "title": "Cloud Infrastructure Modernization Agreement",
+  "agreementType": "Project Assignment Contract",
+  "employeeUid": "emp-1001",
+  "employeeName": "Riya Sharma",
+  "employeeEmail": "riya.sharma@brand.com",
+  "employeeRole": "Full Stack Developer",
+  "employeePhone": "+91 98765 43210",
+  "projectCode": "PRJ-3004",
+  "projectTitle": "Cloud Infrastructure Modernization",
+  "clientName": "Zenith Cloud Solutions",
+  "remuneration": 68000,
+  "paymentTerms": "Milestone Settlement",
+  "startDate": "12 Nov 2026",
+  "endDate": "15 Dec 2026",
+  "scopeDetails": "The Employee agrees to undertake technical execution...",
+  "compensationClause": "Total project remuneration is agreed at ₹68,000...",
+  "ndaClause": "All source code, designs, tokens, and artifacts created for this project remain the sole IP of KeySpex...",
+  "status": "sent"
+}
+```
+
+#### `PATCH /api/contracts/:id/status` body:
+```json
+{
+  "status": "signed"
+}
+```
+**Side Effect**: When `status` changes to `"signed"`, the backend locates the matching project by `projectCode` and pushes `employeeUid` & `employeeName` into `projects.assignedTo` and `projects.assignedNames`. If reverted from `"signed"` to `"sent"`, the employee is cleanly removed from the project roster.
+
+---
+
 ## 7. User Roles & Permissions
 
 | Role | Can Create Users | Can List All Users | Can Read Any User | Can Update Any User | Can Delete Users |
@@ -920,7 +990,7 @@ Returns payroll aggregates: `totalDisbursed`, `disbursementsCount`, `averageSala
 ## 8. Known TODOs & Incomplete Work
 
 ### Critical / Must-Do
-1. **Dashboard pages status** — `/dashboard/admin` is fully implemented and end-to-end bound to the backend REST API (`/api/dashboard/metrics`, `/api/dashboard/revenue`, `/api/dashboard/budget`, `/api/projects`, `/api/obligations`, `/api/events`, `/api/audit-log`, `/api/users`, and `/api/payroll`). Features full executive oversight, directory management, hardened user provisioning (`CreateUserModal.tsx`), and real-time payroll disbursement (`PayrollManagementView.tsx`). `/dashboard/employee` and `/dashboard/client` remain to be built.
+1. **Dashboard pages status** — `/dashboard/admin` is fully implemented and end-to-end bound to the backend REST API (`/api/dashboard/metrics`, `/api/dashboard/revenue`, `/api/dashboard/budget`, `/api/projects`, `/api/obligations`, `/api/events`, `/api/audit-log`, `/api/users`, `/api/payroll`, and `/api/contracts`). Features full executive oversight, directory management, hardened user provisioning with employee job titles (`CreateUserModal.tsx`), contract-driven project assignment management (`ProjectManagementView.tsx`), IT Act digital deed issuance (`ContractManagementView.tsx`), and real-time payroll disbursement (`PayrollManagementView.tsx`). `/dashboard/employee` and `/dashboard/client` remain to be built.
 2. ~~Contact form is a stub~~ *(RESOLVED)*: Implemented end-to-end inquiry pipeline with rate limiting (5 req/15min), `createInquirySchema` validation, Firestore `inquiries` collection, and connected `ContactSection.tsx` with live error/success handling.
 3. **Contact info placeholders** — `site.contact.email` and `site.contact.phone` have `// TODO: confirm` comments. Real values need to be filled in `src/content/site.ts`.
 4. ~~Token refresh logic~~ *(RESOLVED)*: Implemented transparent 401 silent token refresh in `frontend/src/lib/api.ts` (`silentRefreshToken`) using a shared promise mutex to automatically rotate tokens and retry failed requests without interrupting the user.
@@ -1034,6 +1104,7 @@ cd frontend && npm run build
 | `revenueSnapshots` | `"YYYY-MM"` | Monthly revenue totals for chart (yearMonth, amount) |
 | `salaries` | auto Firestore ID | Disbursed employee salary records (employeeUid, name, email, amount, period, status) |
 | `inquiries` | auto Firestore ID | Client inquiries from contact form (name, email, phone, service, message) |
+| `contracts` | auto Firestore ID | Issued employee project contracts & agreements (signatories, remuneration, clauses, hashes) |
 
 ### Seed Script
 ```bash
@@ -1055,11 +1126,13 @@ Seeds all dashboard collections with realistic demo data. Safe to run multiple t
 | Modify Dashboard Sidebar / Header | `frontend/src/components/dashboard/Sidebar.tsx`, `Header.tsx` |
 | Modify Dashboard Charts & Metrics | `frontend/src/components/dashboard/RevenueChart.tsx`, `MetricCards.tsx`, `BudgetUtilization.tsx` |
 | Modify User Management views | `frontend/src/components/dashboard/UserManagementView.tsx`, `CreateUserModal.tsx` |
+| Modify Project & Assignment views | `frontend/src/components/dashboard/ProjectManagementView.tsx`, `frontend/src/app/dashboard/projects/page.tsx` |
+| Modify Contracts & Documents console | `frontend/src/components/dashboard/ContractManagementView.tsx`, `frontend/src/app/dashboard/contracts/page.tsx`, `backend/src/routes/contract.routes.ts`, `backend/src/services/contract.service.ts` |
 | Modify Payroll & Salaries console | `frontend/src/components/dashboard/PayrollManagementView.tsx`, `backend/src/routes/payroll.routes.ts`, `backend/src/services/payroll.service.ts` |
 | Modify Contact Inquiry pipeline | `frontend/src/components/sections/ContactSection.tsx`, `backend/src/routes/inquiry.routes.ts`, `backend/src/services/inquiry.service.ts` |
 | Add a new API route | `backend/src/routes/` + `backend/src/services/` |
 | Modify dashboard KPI aggregation | `backend/src/services/dashboard.service.ts` |
-| Modify project CRUD logic | `backend/src/services/project.service.ts` |
+| Modify project CRUD & contract sync logic | `backend/src/services/project.service.ts`, `backend/src/services/contract.service.ts` |
 | Modify obligation CRUD logic | `backend/src/services/obligation.service.ts` |
 | Modify calendar event CRUD logic | `backend/src/services/event.service.ts` |
 | Write an audit log entry | `backend/src/services/auditLog.service.ts` → `logAction(...)` |

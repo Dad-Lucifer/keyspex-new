@@ -15,6 +15,9 @@ import eventRoutes from "./routes/event.routes";
 import auditRoutes from "./routes/audit.routes";
 import inquiryRoutes from "./routes/inquiry.routes";
 import payrollRoutes from "./routes/payroll.routes";
+import contractRoutes from "./routes/contract.routes";
+import taskRoutes from "./routes/task.routes";
+import paymentTimelineRoutes from "./routes/paymentTimeline.routes";
 
 // Initialize Firebase (side effect import)
 import "./config/firebase";
@@ -69,6 +72,9 @@ app.use("/api/events", eventRoutes);
 app.use("/api/audit-log", auditRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/payroll", payrollRoutes);
+app.use("/api/contracts", contractRoutes);
+app.use("/api/tasks", taskRoutes);
+app.use("/api/payment-timeline", paymentTimelineRoutes);
 
 // ── Health check
 app.get("/health", (_req, res) => {

@@ -42,6 +42,9 @@ interface SidebarProps {
   adminEmail?: string;
   employeeCount?: number;
   clientCount?: number;
+  projectCount?: number;
+  contractCount?: number;
+  taskCount?: number;
 }
 
 export function Sidebar({
@@ -49,10 +52,13 @@ export function Sidebar({
   onSelectTab,
   collapsed,
   onToggleCollapse,
-  adminName = "Alex Rivera",
-  adminEmail = "superadmin@brand.com",
-  employeeCount = 18,
-  clientCount = 24,
+  adminName = "Administrator",
+  adminEmail = "admin@keyspex.com",
+  employeeCount = 0,
+  clientCount = 0,
+  projectCount = 0,
+  contractCount = 0,
+  taskCount = 0,
 }: SidebarProps) {
   const sections = [
     {
@@ -96,13 +102,13 @@ export function Sidebar({
           key: "employees" as NavItemKey,
           label: "Employees",
           icon: Users,
-          badge: employeeCount.toString(),
+          badge: employeeCount ? employeeCount.toString() : null,
         },
         {
           key: "clients" as NavItemKey,
           label: "Clients",
           icon: Building,
-          badge: clientCount.toString(),
+          badge: clientCount ? clientCount.toString() : null,
         },
       ],
     },
@@ -113,13 +119,13 @@ export function Sidebar({
           key: "projects" as NavItemKey,
           label: "Projects & Assignments",
           icon: Briefcase,
-          badge: "12",
+          badge: projectCount ? projectCount.toString() : null,
         },
         {
           key: "tasks" as NavItemKey,
           label: "Task Management",
           icon: CheckSquare,
-          badge: null,
+          badge: taskCount ? taskCount.toString() : null,
         },
       ],
     },
@@ -130,13 +136,13 @@ export function Sidebar({
           key: "contracts" as NavItemKey,
           label: "Contracts & Documents",
           icon: FileText,
-          badge: null,
+          badge: contractCount ? contractCount.toString() : null,
         },
         {
           key: "calendar" as NavItemKey,
           label: "Event Calendar",
           icon: Calendar,
-          badge: "4",
+          badge: null,
         },
       ],
     },

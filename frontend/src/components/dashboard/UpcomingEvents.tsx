@@ -4,55 +4,24 @@ import React, { useState, useEffect } from "react";
 import { Calendar as CalendarIcon, Clock, ArrowUpRight, Loader2 } from "lucide-react";
 import { getCalendarEvents, CalendarEventItem } from "@/lib/api";
 
-const DEFAULT_EVENTS = [
-  {
-    id: "evt-1",
-    month: "OCT",
-    day: "29",
-    title: "Sprint 14 Milestone Review",
-    time: "10:30 AM",
-    context: "PRJ-3001 (Cloud Migration)",
-    tag: "Project Deadline",
-    tagColor: "bg-blue-100 text-blue-800",
-    dateColor: "bg-blue-50 text-blue-700 border-blue-200",
-  },
-  {
-    id: "evt-2",
-    month: "OCT",
-    day: "31",
-    title: "Monthly Payroll Reconciliation",
-    time: "04:00 PM",
-    context: "Finance & HR Core Team",
-    tag: "Operations",
-    tagColor: "bg-sky-100 text-sky-800",
-    dateColor: "bg-sky-50 text-sky-700 border-sky-200",
-  },
-  {
-    id: "evt-3",
-    month: "NOV",
-    day: "02",
-    title: "Executive Q4 Budget Review",
-    time: "02:00 PM",
-    context: "Leadership Council Room",
-    tag: "Financial",
-    tagColor: "bg-amber-100 text-amber-800",
-    dateColor: "bg-amber-50 text-amber-700 border-amber-200",
-  },
-  {
-    id: "evt-4",
-    month: "NOV",
-    day: "04",
-    title: "Client Sync: Apex Global",
-    time: "11:00 AM",
-    context: "CLI-2001 (Google Meet)",
-    tag: "Client Meeting",
-    tagColor: "bg-purple-100 text-purple-800",
-    dateColor: "bg-purple-50 text-purple-700 border-purple-200",
-  },
-];
+interface DisplayEventItem {
+  id: string;
+  month: string;
+  day: string;
+  title: string;
+  time: string;
+  context: string;
+  tag: string;
+  tagColor: string;
+  dateColor: string;
+}
 
-export function UpcomingEvents() {
-  const [events, setEvents] = useState(DEFAULT_EVENTS);
+interface UpcomingEventsProps {
+  onOpenCalendar?: () => void;
+}
+
+export function UpcomingEvents({ onOpenCalendar }: UpcomingEventsProps = {}) {
+  const [events, setEvents] = useState<DisplayEventItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,7 +29,7 @@ export function UpcomingEvents() {
     getCalendarEvents(true)
       .then((data: CalendarEventItem[]) => {
         if (isMounted && data && data.length > 0) {
-          const mapped = data.map((ev) => {
+          const mapped: DisplayEventItem[] = data.map((ev) => {
             const dateObj = new Date(ev.date);
             const month = !isNaN(dateObj.getTime())
               ? dateObj.toLocaleString("en-IN", { month: "short" }).toUpperCase()
@@ -103,10 +72,12 @@ export function UpcomingEvents() {
           });
 
           setEvents(mapped);
+        } else if (isMounted) {
+          setEvents([]);
         }
       })
       .catch(() => {
-        // Fallback to default
+        if (isMounted) setEvents([]);
       })
       .finally(() => {
         if (isMounted) setIsLoading(false);
@@ -135,52 +106,63 @@ export function UpcomingEvents() {
 
         <button
           type="button"
-          aria-label="Add event"
-          className="rounded-lg p-1.5 text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a] transition-colors"
+          onClick={onOpenCalendar}
+          aria-label="Add event or open calendar"
+          className="rounded-lg p-1.5 text-[#64748b] hover:bg-[#f1f5f9] hover:text-[#0f172a] transition-colors cursor-pointer"
         >
           <CalendarIcon size={16} />
         </button>
       </div>
 
       {/* Events List */}
-      <div className="my-3 divide-y divide-[#f8fafc]">
-        {events.map((ev) => (
-          <div key={ev.id} className="flex items-start justify-between py-2.5">
-            <div className="flex items-start gap-3">
-              {/* Date Block */}
-              <div
-                className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border text-center font-mono leading-none ${ev.dateColor}`}
-              >
-                <span className="text-[9px] font-bold uppercase">{ev.month}</span>
-                <span className="text-sm font-black">{ev.day}</span>
-              </div>
-
-              {/* Title & Context */}
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-xs font-bold text-[#0f172a] hover:text-[#2563eb] transition-colors cursor-pointer">
-                    {ev.title}
-                  </p>
-                  <span
-                    className={`rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold ${ev.tagColor}`}
-                  >
-                    {ev.tag}
-                  </span>
+      {events.length === 0 && !isLoading ? (
+        <div className="my-6 py-6 text-center text-xs text-[#94a3b8] rounded-xl border border-dashed border-[#e2e8f0]">
+          No upcoming events scheduled
+        </div>
+      ) : (
+        <div className="my-3 divide-y divide-[#f8fafc]">
+          {events.map((ev) => (
+            <div
+              key={ev.id}
+              onClick={onOpenCalendar}
+              className="flex items-start justify-between py-2.5 cursor-pointer hover:bg-[#f8fafc]/80 rounded-xl px-1.5 -mx-1.5 transition-colors"
+            >
+              <div className="flex items-start gap-3">
+                {/* Date Block */}
+                <div
+                  className={`flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-xl border text-center font-mono leading-none ${ev.dateColor}`}
+                >
+                  <span className="text-[9px] font-bold uppercase">{ev.month}</span>
+                  <span className="text-sm font-black">{ev.day}</span>
                 </div>
 
-                <p className="mt-1 flex items-center gap-1 font-mono text-[10px] text-[#64748b]">
-                  <Clock size={11} className="text-[#94a3b8]" />
-                  <span>{ev.time}</span>
-                  <span className="text-[#cbd5e1]">•</span>
-                  <span className="truncate max-w-[170px] sm:max-w-[210px]">
-                    {ev.context}
-                  </span>
-                </p>
+                {/* Title & Context */}
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-xs font-bold text-[#0f172a] hover:text-[#2563eb] transition-colors">
+                      {ev.title}
+                    </p>
+                    <span
+                      className={`rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold ${ev.tagColor}`}
+                    >
+                      {ev.tag}
+                    </span>
+                  </div>
+
+                  <p className="mt-1 flex items-center gap-1 font-mono text-[10px] text-[#64748b]">
+                    <Clock size={11} className="text-[#94a3b8]" />
+                    <span>{ev.time}</span>
+                    <span className="text-[#cbd5e1]">•</span>
+                    <span className="truncate max-w-[170px] sm:max-w-[210px]">
+                      {ev.context}
+                    </span>
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t border-[#f1f5f9] text-xs">
@@ -190,7 +172,8 @@ export function UpcomingEvents() {
 
         <button
           type="button"
-          className="flex items-center gap-1 font-semibold text-[#2563eb] hover:text-[#1d4ed8] transition-colors"
+          onClick={onOpenCalendar}
+          className="flex items-center gap-1 font-semibold text-[#2563eb] hover:text-[#1d4ed8] transition-colors cursor-pointer"
         >
           <span>Open Full Calendar</span>
           <ArrowUpRight size={14} />

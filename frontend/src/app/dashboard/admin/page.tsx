@@ -25,6 +25,11 @@ import { UpcomingEvents } from "@/components/dashboard/UpcomingEvents";
 import { CreateUserModal } from "@/components/dashboard/CreateUserModal";
 import { UserManagementView } from "@/components/dashboard/UserManagementView";
 import { PayrollManagementView } from "@/components/dashboard/PayrollManagementView";
+import { ProjectManagementView } from "@/components/dashboard/ProjectManagementView";
+import { ContractManagementView } from "@/components/dashboard/ContractManagementView";
+import { TaskManagementView } from "@/components/dashboard/TaskManagementView";
+import { PaymentTimelineView } from "@/components/dashboard/PaymentTimelineView";
+import { EventCalendarView } from "@/components/dashboard/EventCalendarView";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -51,9 +56,39 @@ export default function AdminDashboardPage() {
   });
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
-  const [employeeCount, setEmployeeCount] = useState(18);
-  const [clientCount, setClientCount] = useState(24);
+  const [employeeCount, setEmployeeCount] = useState(0);
+  const [clientCount, setClientCount] = useState(0);
+  const [projectCount, setProjectCount] = useState(0);
+  const [contractCount, setContractCount] = useState(0);
+  const [taskCount, setTaskCount] = useState(0);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+
+  // Read URL query parameter for tab if present
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab") as NavItemKey | null;
+      if (
+        tabParam &&
+        [
+          "dashboard",
+          "projects",
+          "payroll",
+          "employees",
+          "clients",
+          "budgets",
+          "timeline",
+          "tasks",
+          "contracts",
+          "calendar",
+          "reports",
+          "activity",
+        ].includes(tabParam)
+      ) {
+        setCurrentTab(tabParam);
+      }
+    }
+  }, []);
 
   // Authenticate & load live profile with strict route guard
   useEffect(() => {
@@ -147,6 +182,42 @@ export default function AdminDashboardPage() {
       .then((data) => {
         if (data?.data?.users?.length) {
           setClientCount(data.data.users.length);
+        }
+      })
+      .catch(() => {});
+
+    fetch(`${apiUrl}/api/projects`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.data?.projects?.length) {
+          setProjectCount(data.data.projects.length);
+        }
+      })
+      .catch(() => {});
+
+    fetch(`${apiUrl}/api/contracts`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.data?.contracts?.length) {
+          setContractCount(data.data.contracts.length);
+        }
+      })
+      .catch(() => {});
+
+    fetch(`${apiUrl}/api/tasks`, {
+      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
+    })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.data?.tasks?.length) {
+          setTaskCount(data.data.tasks.length);
         }
       })
       .catch(() => {});
@@ -253,6 +324,9 @@ export default function AdminDashboardPage() {
         adminEmail={adminUser.email}
         employeeCount={employeeCount}
         clientCount={clientCount}
+        projectCount={projectCount}
+        contractCount={contractCount}
+        taskCount={taskCount}
       />
 
       {/* Main Panel */}
@@ -286,7 +360,7 @@ export default function AdminDashboardPage() {
             </div>
           )}
 
-          {/* Conditional View: Dashboard vs User Management */}
+          {/* Conditional View: Dashboard vs User Management vs Payroll vs Projects */}
           {currentTab === "employees" ? (
             <UserManagementView
               roleFilter="employee"
@@ -301,6 +375,33 @@ export default function AdminDashboardPage() {
             />
           ) : currentTab === "payroll" ? (
             <PayrollManagementView
+              currency={currency}
+              onBackToDashboard={() => setCurrentTab("dashboard")}
+            />
+          ) : currentTab === "projects" ? (
+            <ProjectManagementView
+              currency={currency}
+              onBackToDashboard={() => setCurrentTab("dashboard")}
+              onProjectsChanged={() => setProjectCount((prev) => prev + 1)}
+            />
+          ) : currentTab === "contracts" ? (
+            <ContractManagementView
+              currency={currency}
+              onBackToDashboard={() => setCurrentTab("dashboard")}
+              onContractsChanged={() => setContractCount((prev) => prev + 1)}
+            />
+          ) : currentTab === "tasks" ? (
+            <TaskManagementView
+              onBackToDashboard={() => setCurrentTab("dashboard")}
+              onTasksChanged={() => setTaskCount((prev) => prev + 1)}
+            />
+          ) : currentTab === "timeline" ? (
+            <PaymentTimelineView
+              currency={currency}
+              onBackToDashboard={() => setCurrentTab("dashboard")}
+            />
+          ) : currentTab === "calendar" ? (
+            <EventCalendarView
               currency={currency}
               onBackToDashboard={() => setCurrentTab("dashboard")}
             />
@@ -319,7 +420,7 @@ export default function AdminDashboardPage() {
                     </span>
                   </div>
                   <p className="mt-1 text-xs sm:text-sm text-[#64748b]">
-                    Here&apos;s your business performance at a glance. Illustrative demo data.
+                    Here&apos;s your business performance at a glance.
                   </p>
                 </div>
 
@@ -454,10 +555,15 @@ export default function AdminDashboardPage() {
                   <BudgetUtilization currency={currency} />
 
                   {/* Upcoming Obligations List */}
-                  <UpcomingObligations currency={currency} />
+                  <UpcomingObligations
+                    currency={currency}
+                    onOpenCalendar={() => setCurrentTab("calendar")}
+                  />
 
                   {/* Upcoming Events Calendar (Image 2) */}
-                  <UpcomingEvents />
+                  <UpcomingEvents
+                    onOpenCalendar={() => setCurrentTab("calendar")}
+                  />
                 </div>
               </div>
             </>

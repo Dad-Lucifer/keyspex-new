@@ -1,7 +1,22 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, UserPlus, ShieldAlert, CheckCircle2, Eye, EyeOff, Phone, Mail, Globe } from "lucide-react";
+import { X, UserPlus, ShieldAlert, CheckCircle2, Eye, EyeOff, Phone, Mail, Globe, Briefcase } from "lucide-react";
+
+const JOB_TITLE_PRESETS = [
+  "Full Stack Developer",
+  "Frontend Developer",
+  "Backend Developer",
+  "UI/UX Designer",
+  "DevOps Engineer",
+  "Mobile Developer",
+  "Graphic Designer",
+  "Video Editor",
+  "SEO Specialist",
+  "Social Media Manager",
+  "Project Manager",
+  "QA Engineer",
+];
 
 interface CreateUserModalProps {
   isOpen: boolean;
@@ -24,6 +39,7 @@ export function CreateUserModal({
   const [contactNo, setContactNo] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [portfolioUrl, setPortfolioUrl] = useState("");
+  const [jobTitle, setJobTitle] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -85,6 +101,7 @@ export function CreateUserModal({
           role,
           ...(contactEmail.trim() ? { contactEmail: contactEmail.trim().toLowerCase() } : {}),
           ...(portfolioUrl.trim() ? { portfolioUrl: portfolioUrl.trim() } : {}),
+          ...(role === "employee" && jobTitle.trim() ? { jobTitle: jobTitle.trim() } : {}),
         }),
       });
 
@@ -144,7 +161,8 @@ export function CreateUserModal({
             <CheckCircle2 size={48} className="text-emerald-500 mb-2 animate-bounce" />
             <h4 className="font-bold text-sm text-[#0f172a]">User Created Successfully!</h4>
             <p className="text-xs text-[#64748b] mt-1">
-              {displayName} has been provisioned with role &apos;{role}&apos;.
+              {displayName} has been provisioned with role &apos;{role}&apos;
+              {role === "employee" && jobTitle.trim() ? ` as ${jobTitle.trim()}` : ""}.
             </p>
           </div>
         ) : (
@@ -186,6 +204,47 @@ export function CreateUserModal({
                 </button>
               </div>
             </div>
+
+            {/* Job Title — only visible for employees */}
+            {role === "employee" && (
+              <div>
+                <label className="mb-1.5 flex items-center gap-1 font-mono text-[10px] uppercase font-bold tracking-wider text-[#64748b]">
+                  <Briefcase size={11} className="text-[#94a3b8]" />
+                  Job Title / Designation
+                </label>
+
+                {/* Preset chips */}
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {JOB_TITLE_PRESETS.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setJobTitle(preset)}
+                      className={`rounded-lg border px-2.5 py-1 font-mono text-[10px] font-semibold transition-all ${
+                        jobTitle === preset
+                          ? "border-[#2563eb] bg-[#eff6ff] text-[#2563eb]"
+                          : "border-[#e2e8f0] bg-white text-[#475569] hover:bg-[#f8fafc]"
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Free-text input */}
+                <input
+                  type="text"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder="Or type a custom title (e.g. Cloud UI Engineer)"
+                  className="w-full rounded-xl border border-[#e2e8f0] bg-[#f8fafc] px-3.5 py-2 text-xs text-[#0f172a] placeholder-[#94a3b8] outline-none focus:border-[#2563eb] focus:bg-white focus:ring-2 focus:ring-blue-500/10"
+                  maxLength={80}
+                />
+                <p className="mt-1 font-mono text-[9px] text-[#94a3b8]">
+                  Appears on contracts &amp; payroll records. Pick a preset or type any custom designation.
+                </p>
+              </div>
+            )}
 
             {/* Display Name */}
             <div>

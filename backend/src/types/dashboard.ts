@@ -61,28 +61,34 @@ export interface Project {
   id: string;
   code: string;         // e.g. "PRJ-3001"
   title: string;
+  description?: string; // project details / description
   clientId: string;     // CLI-XXXX
   clientName: string;
-  amount: number;       // INR — total contract value
+  amount: number;       // INR — total budget / contract value
   sharePercent: number; // portfolio share %
   status: ProjectStatus;
   startDate: string;    // ISO date string
-  endDate: string;      // ISO date string
+  endDate: string;      // ISO date string (deadline)
+  assignedTo?: string[];      // employee UIDs
+  assignedNames?: string[];   // employee names
   createdBy: string;    // admin uid
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
 
 export interface CreateProjectInput {
-  code: string;
+  code?: string;
   title: string;
-  clientId: string;
-  clientName: string;
+  description?: string;
+  clientId?: string;
+  clientName?: string;
   amount: number;
-  sharePercent: number;
-  status: ProjectStatus;
-  startDate: string;
+  sharePercent?: number;
+  status?: ProjectStatus;
+  startDate?: string;
   endDate: string;
+  assignedTo?: string[];
+  assignedNames?: string[];
 }
 
 export type UpdateProjectInput = Partial<Omit<CreateProjectInput, "code">>;

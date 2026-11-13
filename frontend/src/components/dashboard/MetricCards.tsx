@@ -18,21 +18,21 @@ interface MetricCardsProps {
 }
 
 const DEFAULT_METRICS: DashboardMetrics = {
-  totalRevenue: 845000,
-  outstanding: 125000,
-  outstandingCount: 3,
-  totalBudget: 1200000,
-  budgetUtilizationPercent: 70.4,
-  salaryPayable: 240000,
-  salaryDueDate: "Nov 1",
-  salaryStaffCount: 18,
-  activeProjects: 12,
-  projectsOnTrack: 8,
-  projectsNearDeadline: 2,
-  projectsAtRisk: 2,
-  totalEmployees: 18,
-  activeEmployees: 16,
-  onboardingEmployees: 1,
+  totalRevenue: 0,
+  outstanding: 0,
+  outstandingCount: 0,
+  totalBudget: 0,
+  budgetUtilizationPercent: 0,
+  salaryPayable: 0,
+  salaryDueDate: "Upcoming",
+  salaryStaffCount: 0,
+  activeProjects: 0,
+  projectsOnTrack: 0,
+  projectsNearDeadline: 0,
+  projectsAtRisk: 0,
+  totalEmployees: 0,
+  activeEmployees: 0,
+  onboardingEmployees: 0,
 };
 
 export function MetricCards({ currency, employeeCount }: MetricCardsProps) {

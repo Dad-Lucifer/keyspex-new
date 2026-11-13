@@ -35,15 +35,33 @@ export async function createProject(
   adminUid: string,
   adminName: string
 ): Promise<Project> {
-  // Ensure project code is unique
-  const existing = await db
-    .collection("projects")
-    .where("code", "==", input.code)
-    .limit(1)
-    .get();
+  let code = input.code?.trim();
 
-  if (!existing.empty) {
-    throw new AppError(409, `Project code "${input.code}" is already in use.`, "PROJECT_CODE_TAKEN");
+  if (code) {
+    // Check if custom code already exists
+    const existing = await db
+      .collection("projects")
+      .where("code", "==", code)
+      .limit(1)
+      .get();
+
+    if (!existing.empty) {
+      throw new AppError(409, `Project code "${code}" is already in use.`, "PROJECT_CODE_TAKEN");
+    }
+  } else {
+    // Auto-generate unique project code
+    let unique = false;
+    while (!unique) {
+      code = `PRJ-${Math.floor(1000 + Math.random() * 9000)}`;
+      const existing = await db
+        .collection("projects")
+        .where("code", "==", code)
+        .limit(1)
+        .get();
+      if (existing.empty) {
+        unique = true;
+      }
+    }
   }
 
   const now = Timestamp.now();
@@ -51,15 +69,19 @@ export async function createProject(
 
   const project: Project = {
     id: ref.id,
-    code: input.code,
-    title: input.title,
-    clientId: input.clientId,
-    clientName: input.clientName,
+    code: code!,
+    title: input.title.trim(),
+    description: input.description?.trim() || "",
+    clientId: input.clientId?.trim() || "CLI-INTERNAL",
+    clientName: input.clientName?.trim() || "Internal / Direct",
     amount: input.amount,
-    sharePercent: input.sharePercent,
-    status: input.status,
-    startDate: input.startDate,
+    sharePercent: input.sharePercent ?? 0,
+    status: input.status || "on-track",
+    startDate: input.startDate || new Date().toISOString().split("T")[0],
     endDate: input.endDate,
+    // Always start empty — engineers are linked when they sign a contract
+    assignedTo: [],
+    assignedNames: [],
     createdBy: adminUid,
     createdAt: now,
     updatedAt: now,
@@ -70,8 +92,8 @@ export async function createProject(
   // Async audit — intentionally not awaited so it doesn't block response
   logAction({
     actor: { uid: adminUid, name: adminName, role: "admin", initials: initials(adminName) },
-    action: `Created Project ${input.code}`,
-    target: `${input.title} (${input.clientId})`,
+    action: `Created Project ${project.code}`,
+    target: `${project.title} (${project.clientName})`,
     status: "Completed",
   }).catch(() => void 0);
 
@@ -92,8 +114,12 @@ export async function updateProject(
     throw new AppError(404, "Project not found.", "PROJECT_NOT_FOUND");
   }
 
+  // Strip assignedTo / assignedNames — these are exclusively managed by the
+  // contract service when an employee signs or a contract is revoked.
+  const { assignedTo: _a, assignedNames: _n, ...safeInput } = input as any;
+
   await db.collection("projects").doc(id).update({
-    ...input,
+    ...safeInput,
     updatedAt: FieldValue.serverTimestamp(),
   });
 
@@ -135,16 +161,19 @@ function docToProject(doc: FirebaseFirestore.DocumentSnapshot): Project {
   const d = doc.data()!;
   return {
     id: doc.id,
-    code: d.code as string,
-    title: d.title as string,
-    clientId: d.clientId as string,
-    clientName: d.clientName as string,
-    amount: d.amount as number,
-    sharePercent: d.sharePercent as number,
-    status: d.status as ProjectStatus,
-    startDate: d.startDate as string,
-    endDate: d.endDate as string,
-    createdBy: d.createdBy as string,
+    code: (d.code as string) || "PRJ-0000",
+    title: (d.title as string) || "Untitled Project",
+    description: (d.description as string) || "",
+    clientId: (d.clientId as string) || "CLI-INTERNAL",
+    clientName: (d.clientName as string) || "Internal / Direct",
+    amount: (d.amount as number) || 0,
+    sharePercent: (d.sharePercent as number) || 0,
+    status: (d.status as ProjectStatus) || "on-track",
+    startDate: (d.startDate as string) || "",
+    endDate: (d.endDate as string) || "",
+    assignedTo: (d.assignedTo as string[]) || [],
+    assignedNames: (d.assignedNames as string[]) || [],
+    createdBy: (d.createdBy as string) || "",
     createdAt: d.createdAt as Timestamp,
     updatedAt: d.updatedAt as Timestamp,
   };
