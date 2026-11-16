@@ -68,7 +68,13 @@ export async function createTask(
   const now = Timestamp.now();
   const ref = db.collection("tasks").doc();
 
-  const record: TaskRecord = {
+  const rawInput = input as any;
+
+  const record: TaskRecord & {
+    projectId?: string;
+    projectCode?: string;
+    projectTitle?: string;
+  } = {
     id: ref.id,
     title: input.title.trim(),
     description: (input.description || "").trim(),
@@ -77,6 +83,9 @@ export async function createTask(
     assignedEmployeeName: input.assignedEmployeeName.trim(),
     assignedEmployeeEmail: input.assignedEmployeeEmail?.trim() || "",
     assignedEmployeeRole: input.assignedEmployeeRole?.trim() || "",
+    projectId: (rawInput.projectId || "").trim(),
+    projectCode: (rawInput.projectCode || "").trim(),
+    projectTitle: (rawInput.projectTitle || "").trim(),
     priority: (input.priority || "medium") as TaskPriority,
     status: (input.status || "todo") as TaskStatus,
     createdBy: actor?.uid || "admin",
@@ -125,6 +134,7 @@ export async function updateTask(
   }
 
   const existingData = doc.data()!;
+  const rawInput = input as any;
   const updatePayload: Record<string, unknown> = {
     updatedAt: FieldValue.serverTimestamp(),
   };
@@ -139,6 +149,9 @@ export async function updateTask(
     updatePayload.assignedEmployeeEmail = input.assignedEmployeeEmail.trim();
   if (input.assignedEmployeeRole !== undefined)
     updatePayload.assignedEmployeeRole = input.assignedEmployeeRole.trim();
+  if (rawInput.projectId !== undefined) updatePayload.projectId = rawInput.projectId.trim();
+  if (rawInput.projectCode !== undefined) updatePayload.projectCode = rawInput.projectCode.trim();
+  if (rawInput.projectTitle !== undefined) updatePayload.projectTitle = rawInput.projectTitle.trim();
   if (input.priority !== undefined) updatePayload.priority = input.priority;
   if (input.status !== undefined) updatePayload.status = input.status;
 
@@ -223,11 +236,14 @@ function docToTask(doc: FirebaseFirestore.DocumentSnapshot): TaskRecord {
     assignedEmployeeName: (d.assignedEmployeeName as string) || "",
     assignedEmployeeEmail: (d.assignedEmployeeEmail as string) || "",
     assignedEmployeeRole: (d.assignedEmployeeRole as string) || "",
+    ...(d.projectId ? { projectId: d.projectId as string } : {}),
+    ...(d.projectCode ? { projectCode: d.projectCode as string } : {}),
+    ...(d.projectTitle ? { projectTitle: d.projectTitle as string } : {}),
     priority: (d.priority as TaskPriority) || "medium",
     status: (d.status as TaskStatus) || "todo",
     createdBy: (d.createdBy as string) || "",
     createdByName: (d.createdByName as string) || "",
     createdAt: d.createdAt as Timestamp,
     updatedAt: d.updatedAt as Timestamp,
-  };
+  } as TaskRecord;
 }

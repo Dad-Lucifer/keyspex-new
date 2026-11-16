@@ -18,6 +18,7 @@ import payrollRoutes from "./routes/payroll.routes";
 import contractRoutes from "./routes/contract.routes";
 import taskRoutes from "./routes/task.routes";
 import paymentTimelineRoutes from "./routes/paymentTimeline.routes";
+import employeeRoutes from "./routes/employee.routes";
 
 // Initialize Firebase (side effect import)
 import "./config/firebase";
@@ -75,6 +76,7 @@ app.use("/api/payroll", payrollRoutes);
 app.use("/api/contracts", contractRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/payment-timeline", paymentTimelineRoutes);
+app.use("/api/employee", employeeRoutes);
 
 // ── Health check
 app.get("/health", (_req, res) => {
